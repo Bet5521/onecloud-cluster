@@ -1,0 +1,21 @@
+server:
+  host: 0.0.0.0
+  port: 8082
+  debug: false
+  cors: true
+
+ai:
+  provider: "openai"
+  api_key: "your_api_key_here"
+  base_url: "https://api.openai.com/v1"
+  model: "gpt-4o-mini"
+  max_tokens: 2048
+  temperature: 0.7
+
+session:
+  max_history: 20
+  expire_hours: 24
+
+web:
+  static_path: ""
+  title: "OneCloud AI 助手"

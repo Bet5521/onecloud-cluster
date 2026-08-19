@@ -1,0 +1,24 @@
+{
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8081,
+    "token": "",
+    "debug": false
+  },
+  "music": {
+    "download_path": "/mnt/sd/iot-02/xiaomusic/downloads",
+    "cache_path": "/mnt/sd/iot-02/xiaomusic/cache",
+    "max_cache_size_mb": 512,
+    "auto_update_lrc": true,
+    "prefer_quality": "standard"
+  },
+  "account": {
+    "phone": "",
+    "password": "",
+    "session_data_path": "/mnt/sd/iot-02/xiaomusic/session"
+  },
+  "output": {
+    "format": "mp3",
+    "bitrate": 128
+  }
+}

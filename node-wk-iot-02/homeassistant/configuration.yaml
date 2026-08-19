@@ -1,0 +1,43 @@
+default_config:
+
+homeassistant:
+  name: 玩客云集群
+  latitude: 39.9042
+  longitude: 116.4074
+  elevation: 50
+  unit_system: metric
+  time_zone: Asia/Shanghai
+  external_url: "https://home.${DOMAIN}"
+  internal_url: "http://${NODE_IP}:8123"
+  whitelist_external_dirs:
+    - /config
+    - /backup
+
+http:
+  cors_allowed_origins:
+    - "https://home.${DOMAIN}"
+    - "http://${NODE_IP}:8123"
+    - "http://127.0.0.1:8123"
+
+# 禁用非必要组件减少内存占用
+frontend:
+config:
+  customize: !include customize.yaml
+  default_name: 智能家居
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+
+template:
+  - binary_sensor:
+      - name: "HA 运行中"
+        state: "on"
+
+system_log:
+  max_entries: 5000
+
+recorder:
+  db_url: "sqlite:////config/home-assistant_v2.db"
+  purge_days: 30
+  commit_interval: 60

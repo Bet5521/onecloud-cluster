@@ -1,0 +1,47 @@
+version: "3.8"
+
+services:
+  homeassistant:
+    image: ${HA_IMAGE}
+    container_name: homeassistant
+    restart: unless-stopped
+    network_mode: host
+    privileged: true
+    env_file: .env
+    environment:
+      - TZ=${TZ}
+      - HOMEASSISTANT_URL=http://${NODE_IP}:8123
+      - ALLOWED_HOSTS=${NODE_IP},localhost,*.${DOMAIN}
+    volumes:
+      - ./homeassistant:/config
+      - /run/dbus:/run/dbus:ro
+      - /etc/localtime:/etc/localtime:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    mem_limit: 512m
+    pids_limit: 256
+
+  piwigo:
+    image: linuxserver/piwigo:latest
+    container_name: piwigo
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - TZ=${TZ}
+      - PUID=${PUID}
+      - PGID=${PGID}
+    ports:
+      - "8080:80"
+    volumes:
+      - ./piwigo/config:/config
+      - ./piwigo/gallery:/gallery
+      - /etc/localtime:/etc/localtime:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: "2"
+    mem_limit: 128m
