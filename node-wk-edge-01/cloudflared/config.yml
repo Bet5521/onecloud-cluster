@@ -1,0 +1,15 @@
+tunnel: onecloud-cluster
+credentials-file: /root/.cloudflared/onecloud-cluster.json
+
+ingress:
+  - hostname: panel.${DOMAIN}
+    service: http://localhost:9000
+  - hostname: dns.${DOMAIN}
+    service: http://localhost:3000
+  - hostname: memos.${DOMAIN}
+    service: http://localhost:5230
+  - hostname: home.${DOMAIN}
+    service: http://192.168.1.102:8123
+  - hostname: photos.${DOMAIN}
+    service: http://192.168.1.102:8080
+  - service: http_status:404

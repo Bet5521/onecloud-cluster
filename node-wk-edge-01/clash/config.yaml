@@ -1,0 +1,38 @@
+mixed-port: 7890
+allow-lan: true
+mode: rule
+log-level: info
+external-controller: 0.0.0.0:9090
+secret: your_clash_api_secret_here
+
+proxies:
+  # 将你的代理节点配置在这里
+  # - name: "节点名称"
+  #   type: vmess
+  #   server: your-server.com
+  #   port: 443
+  #   uuid: your-uuid
+  #   alterId: 0
+  #   cipher: auto
+  #   tls: true
+
+proxy-groups:
+  - name: PROXY
+    type: select
+    proxies:
+      - 自动选择
+      - DIRECT
+  - name: 自动选择
+    type: url-test
+    proxies: []
+    url: http://www.gstatic.com/generate_204
+    interval: 300
+
+rules:
+  - DOMAIN-SUFFIX,local,DIRECT
+  - IP-CIDR,127.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,172.16.0.0/12,DIRECT,no-resolve
+  - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
+  - IP-CIDR,10.8.0.0/24,DIRECT,no-resolve
+  - MATCH,PROXY
