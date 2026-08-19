@@ -1,0 +1,51 @@
+nodes:
+  - name: wk-edge-01
+    host: edge-01.lan
+    ip: 192.168.1.101
+    wg_ip: 10.8.0.101
+    role: edge-gateway
+    arch: armv7l
+    cpu: Amlogic S805
+    memory: 1024MB
+    storage:
+      system: /dev/mmcblk0p1
+      data: /dev/mmcblk1p1
+      data_mount: /mnt/sd
+    sd_mount: /mnt/sd
+    services: [cloudflared, adguard, wireguard, clash, memos, panel]
+
+  - name: wk-iot-02
+    host: iot-02.lan
+    ip: 192.168.1.102
+    wg_ip: 10.8.0.102
+    role: iot-core
+    arch: armv7l
+    cpu: Amlogic S805
+    memory: 1024MB
+    storage:
+      system: /dev/mmcblk0p1
+      data: /dev/mmcblk1p1
+      data_mount: /mnt/sd
+    sd_mount: /mnt/sd
+    services: [homeassistant, xiaomusic, migpt, piwigo]
+
+  - name: wk-storage-03
+    host: storage-03.lan
+    ip: 192.168.1.103
+    wg_ip: 10.8.0.103
+    role: storage-sync
+    arch: armv7l
+    cpu: Amlogic S805
+    memory: 1024MB
+    storage:
+      system: /dev/mmcblk0p1
+      data: /dev/mmcblk1p1
+      data_mount: /mnt/sd
+    sd_mount: /mnt/sd
+    services: [syncthing, verysync, aria2, cupsd, cups-web]
+
+network:
+  lan_subnet: 192.168.1.0/24
+  wg_subnet: 10.8.0.0/24
+  gateway: 192.168.1.1
+  domain: yourdomain.com

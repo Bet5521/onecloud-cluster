@@ -1,0 +1,197 @@
+services:
+  cloudflared:
+    node: wk-edge-01
+    container: true
+    image: cloudflare/cloudflared:latest
+    ports: []
+    env:
+      TZ: Asia/Shanghai
+    volumes:
+      - ./cloudflared:/etc/cloudflared
+      - cloudflared-config:/root/.cloudflared
+    restart: unless-stopped
+    public_access:
+      type: cloudflare-tunnel
+      hostname: tunnel.yourdomain.com
+      service: http://edge-01.lan:9000
+
+  adguard:
+    node: wk-edge-01
+    container: true
+    image: 11notes/adguard:latest
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "3000:3000"
+    volumes:
+      - ./adguard/work:/opt/adguardhome/work
+      - ./adguard/conf:/opt/adguardhome/conf
+    restart: unless-stopped
+    public_access:
+      type: cloudflare-tunnel
+      hostname: dns.yourdomain.com
+      service: http://edge-01.lan:3000
+
+  wireguard:
+    node: wk-edge-01
+    container: true
+    image: linuxserver/wireguard:latest
+    ports:
+      - "51820:51820/udp"
+    env:
+      TZ: Asia/Shanghai
+      PUID: "1000"
+      PGID: "1000"
+      SERVERURL: yourdomain.com
+      SERVERPORT: "51820"
+      PEERS: "3"
+      ALLOWEDIPS: "0.0.0.0/0"
+    volumes:
+      - ./wireguard/config:/config
+      - /lib/modules:/lib/modules
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    restart: unless-stopped
+
+  clash:
+    node: wk-edge-01
+    container: false
+    binary: mihomo-linux-armv7
+    port: 9090
+    config_path: ./clash/config.yaml
+    install_path: /usr/local/bin/mihomo
+    memory_limit: 30MB
+
+  memos:
+    node: wk-edge-01
+    container: true
+    image: neosmemo/memos:stable
+    ports:
+      - "5230:5230"
+    volumes:
+      - ./memos/data:/var/opt/memos
+    restart: unless-stopped
+    public_access:
+      type: cloudflare-tunnel
+      hostname: memos.yourdomain.com
+      service: http://edge-01.lan:5230
+
+  homeassistant:
+    node: wk-iot-02
+    container: true
+    image: ghcr.io/adyoull/ha-armv7:latest
+    ports:
+      - "8123:8123"
+    network_mode: host
+    privileged: true
+    volumes:
+      - ./homeassistant:/config
+      - /run/dbus:/run/dbus:ro
+    restart: unless-stopped
+    memory_limit: 512MB
+    public_access:
+      type: cloudflare-tunnel
+      hostname: home.yourdomain.com
+      service: http://iot-02.lan:8123
+
+  xiaomusic:
+    node: wk-iot-02
+    container: false
+    binary: xiaomusic-linux-armv7
+    port: 8081
+    memory_limit: 60MB
+
+  migpt:
+    node: wk-iot-02
+    container: false
+    binary: migpt-linux-armv7
+    port: 8082
+    memory_limit: 40MB
+
+  piwigo:
+    node: wk-iot-02
+    container: true
+    image: linuxserver/piwigo:latest
+    ports:
+      - "8080:80"
+    volumes:
+      - ./piwigo/config:/config
+      - ./piwigo/gallery:/gallery
+    restart: unless-stopped
+    public_access:
+      type: cloudflare-tunnel
+      hostname: photos.yourdomain.com
+      service: http://iot-02.lan:8080
+
+  syncthing:
+    node: wk-storage-03
+    container: true
+    image: syncthing/syncthing:latest
+    ports:
+      - "8384:8384"
+      - "22000:22000"
+      - "22000:22000/udp"
+      - "21027:21027/udp"
+    volumes:
+      - ./syncthing/config:/var/syncthing/config
+      - ./syncthing/data:/var/syncthing/data
+    restart: unless-stopped
+
+  verysync:
+    node: wk-storage-03
+    container: false
+    binary: verysync-linux-armv7
+    port: 19900
+    memory_limit: 50MB
+
+  aria2:
+    node: wk-storage-03
+    container: true
+    image: p3terx/aria2-pro:latest
+    ports:
+      - "6800:6800"
+      - "6888:6888"
+      - "6888:6888/udp"
+    env:
+      RPC_SECRET: "changeme_your_token"
+      RPC_PORT: "6800"
+      LISTEN_PORT: "6888"
+    volumes:
+      - ./aria2/config:/config
+      - ./aria2/downloads:/downloads
+    restart: unless-stopped
+
+  cupsd:
+    node: wk-storage-03
+    container: true
+    image: ousia/cupsd:armhf
+    ports:
+      - "631:631"
+    env:
+      ADMIN_USER: admin
+      ADMIN_PASSWORD: "changeme_cups_password"
+    volumes:
+      - ./cupsd:/etc/cups
+    restart: unless-stopped
+
+  cups-web:
+    node: wk-storage-03
+    container: true
+    image: nkn-ts/cups-web:armhf
+    ports:
+      - "632:632"
+    env:
+      CUPS_HOST: "wk-storage-03"
+      CUPS_PORT: "631"
+    restart: unless-stopped
+
+  panel:
+    node: wk-edge-01
+    container: false
+    language: python3-flask
+    port: 9000
+    public_access:
+      type: cloudflare-tunnel
+      hostname: panel.yourdomain.com
+      service: http://edge-01.lan:9000

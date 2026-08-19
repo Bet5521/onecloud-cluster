@@ -1,0 +1,56 @@
+# OneCloud Cluster - .gitignore
+
+# 敏感配置
+.env
+.env.local
+*.env.local
+
+# WireGuard 私钥
+wireguard/*.key
+wireguard/*.privkey
+wireguard/peer-*/config/*.client.conf
+
+# Cloudflare 凭据
+cloudflared/credentials.json
+cloudflared/tunnel-token
+
+# 备份数据
+backups/
+*.tar.gz
+*.bak
+
+# 运行时数据
+node-*/homeassistant/.storage/
+node-*/homeassistant/home-assistant.db
+node-*/syncthing/index-v0.14.db
+node-*/syncthing/key.pem
+node-*/aria2/aria2.session
+node-*/cupsd/ppd/
+node-*/adguard/AdGuardHome.yaml
+node-*/memos/memos_prod.db
+node-*/piwigo/config/database.inc.php
+
+# Native 二进制
+node-*/native/bin/
+node-*/native/*.deb
+node-*/native/*.tar.gz
+node-*/native/*.gz
+
+# Python
+panel/__pycache__/
+panel/*.pyc
+panel/.venv/
+panel/venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker volumes
+docker-compose.override.yml
