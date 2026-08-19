@@ -1,0 +1,117 @@
+version: "3.8"
+
+services:
+  syncthing:
+    image: syncthing/syncthing:latest
+    container_name: syncthing
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - TZ=${TZ}
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - GUI_ADDRESS=0.0.0.0:8384
+    ports:
+      - "8384:8384"
+      - "22000:22000"
+      - "22000:22000/udp"
+      - "21027:21027/udp"
+    volumes:
+      - ./syncthing/config:/var/syncthing/config
+      - ./syncthing/data:/var/syncthing/data
+      - /etc/localtime:/etc/localtime:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: "2"
+    mem_limit: 64m
+
+  aria2:
+    image: p3terx/aria2-pro:latest
+    container_name: aria2
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - TZ=${TZ}
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - RPC_SECRET=${ARIA2_RPC_SECRET}
+      - RPC_PORT=6800
+      - LISTEN_PORT=6888
+      - DISK_CACHE=64M
+      - UPDATE_TRACKERS=true
+    ports:
+      - "6800:6800"
+      - "6888:6888"
+      - "6888:6888/udp"
+    volumes:
+      - ./aria2/config:/config
+      - ./aria2/downloads:/downloads
+      - /etc/localtime:/etc/localtime:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: "2"
+    mem_limit: 48m
+
+  ariang:
+    image: p3terx/ariang:latest
+    container_name: ariang
+    restart: unless-stopped
+    ports:
+      - "6880:80"
+    environment:
+      - TZ=${TZ}
+    logging:
+      driver: json-file
+      options:
+        max-size: 2m
+        max-file: "1"
+    mem_limit: 16m
+
+  cupsd:
+    image: ousia/cupsd:armhf
+    container_name: cupsd
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - TZ=${TZ}
+      - ADMIN_USER=${CUPS_ADMIN_USER}
+      - ADMIN_PASSWORD=${CUPS_ADMIN_PASSWORD}
+    ports:
+      - "631:631"
+    volumes:
+      - ./cupsd/config:/etc/cups
+      - ./cupsd/printers:/var/cups/printers
+      - ./cupsd/spool:/var/spool/cups
+      - /etc/localtime:/etc/localtime:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: "2"
+    mem_limit: 64m
+
+  cups-web:
+    image: nkn-ts/cups-web:armhf
+    container_name: cups-web
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ}
+      - CUPS_HOST=${NODE_IP}
+      - CUPS_PORT=631
+      - CUPS_USER=${CUPS_ADMIN_USER}
+      - CUPS_PASSWORD=${CUPS_ADMIN_PASSWORD}
+    ports:
+      - "632:80"
+    volumes:
+      - ./cups-web/config:/app/config
+      - /etc/localtime:/etc/localtime:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: 2m
+        max-file: "1"
+    mem_limit: 24m

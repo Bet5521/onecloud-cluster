@@ -1,0 +1,41 @@
+# verysync (微力同步) 配置
+# 注意: verysync 是原生二进制, 非 Docker
+
+server:
+  # WebUI 监听地址
+  host: 0.0.0.0
+  port: 19900
+
+sync:
+  # 同步模式: manual (手动配对) 或 auto (自动发现)
+  mode: manual
+
+  # 需要同步的目录列表
+  folders:
+    - name: "集群配置"
+      path: "/mnt/sd/storage-03/cluster-sync"
+      # 同步码 (其他设备需要输入此码加入)
+      # 首次启动后在 WebUI 中生成
+
+    - name: "下载文件"
+      path: "/mnt/sd/storage-03/aria2/downloads"
+
+    - name: "相册备份"
+      path: "/mnt/sd/storage-03/photos-backup"
+
+advanced:
+  # 临时文件目录
+  temp_dir: "/mnt/sd/storage-03/verysync/temp"
+
+  # 最大并发下载数
+  max_concurrent: 16
+
+  # 限速 (KB/s, 0 不限)
+  upload_limit: 0
+  download_limit: 0
+
+  # 跳过隐藏文件
+  skip_hidden: true
+
+  # 跳过系统文件
+  skip_system: true
