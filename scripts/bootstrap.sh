@@ -10,9 +10,10 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-log_info()  { echo -e "${GREEN}[INFO]${NC} $*"; }
-log_warn()  { echo -e "${YELLOW}[WARN]${NC} $*"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $*"; }
+log_info()    { echo -e "${GREEN}[INFO]${NC} $*"; }
+log_warn()    { echo -e "${YELLOW}[WARN]${NC} $*"; }
+log_error()   { echo -e "${RED}[ERROR]${NC} $*"; }
+log_success() { echo -e "${GREEN}[✓]${NC} $*"; }
 
 echo ""
 echo "=========================================="
@@ -67,6 +68,20 @@ apt install -y curl wget git vim htop iotop net-tools dnsutils \
     gnupg lsb-release software-properties-common \
     wireguard-tools wireguard-dkms
 
+# ---- 5.1 安装 Docker ----
+if ! command -v docker &>/dev/null; then
+    log_info "安装 Docker..."
+    curl -fsSL https://get.docker.com | bash
+    systemctl enable --now docker
+    # 锁定 Docker 版本防止意外升级
+    if dpkg -l | grep -q docker.io; then
+        apt-mark hold docker.io
+    fi
+    log_success "Docker 已安装并启动"
+else
+    log_info "Docker 已存在, 跳过安装"
+fi
+
 # ---- 6. 配置时区 ----
 log_info "设置时区: Asia/Shanghai"
 ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
@@ -95,6 +110,7 @@ if [ -b "$SD_PATH" ]; then
             mount "${SD_PART}" /mnt/sd 2>/dev/null || {
                 log_warn "SD 卡可能未格式化, 尝试创建分区..."
                 parted -s "$SD_PATH" mklabel gpt mkpart primary ext4 1MiB 100%
+                partprobe "$SD_PATH" 2>/dev/null || true
                 sleep 2
                 mkfs.ext4 -F "${SD_PART}"
                 mount "${SD_PART}" /mnt/sd
@@ -178,7 +194,6 @@ cat >> /etc/hosts << EOF
 192.168.1.101  wk-edge-01 edge-01.lan
 192.168.1.102  wk-iot-02 iot-02.lan
 192.168.1.103  wk-storage-03 storage-03.lan
-192.168.1.104  wk-backup-04 backup-04.lan
 EOF
 
 # ---- 13. 启用 IP 转发 ----
