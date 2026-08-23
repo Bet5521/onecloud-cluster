@@ -46,7 +46,7 @@ install_mihomo() {
         curl -sL "https://github.com/MetaCubeX/mihomo/releases/download/${VER}/mihomo-linux-armv7-${VER}.gz" \
             | gunzip > /usr/local/bin/mihomo
         chmod +x /usr/local/bin/mihomo
-        log_info "mihomo 版本: $($(which mihomo) -v 2>&1 | head -1 || echo 'ok')"
+        log_info "mihomo 版本: $(\$(which mihomo) -v 2>&1 | head -1 || echo 'ok')"
     else
         log_error "下载失败, 请手动安装"
     fi
@@ -54,17 +54,43 @@ install_mihomo() {
 
 install_xiaomusic() {
     log_info "安装 xiaomusic..."
-    curl -sL https://api.github.com/repos/hanxi/xiaomusic/releases/latest | \
-        grep "browser_download_url.*linux.*arm" | head -1 | \
-        sed -E 's/.*"([^"]+)".*/\1/' | \
-        xargs curl -sL | tar xz -C /tmp
-    if [ -f /tmp/xiaomusic ]; then
-        mv /tmp/xiaomusic /usr/local/bin/
+    local ver
+    ver=$(curl -sL https://api.github.com/repos/hanxi/xiaomusic/releases/latest | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
+    if [ -z "$ver" ]; then
+        log_error "获取版本失败"
+        return 1
+    fi
+    log_info "最新版本: $ver"
+
+    local arch="armv7"
+    case "$(uname -m)" in
+        aarch64|arm64) arch="arm64" ;;
+        x86_64)        arch="amd64" ;;
+    esac
+
+    local url
+    url=$(curl -sL https://api.github.com/repos/hanxi/xiaomusic/releases/latest \
+        | grep "browser_download_url.*linux.*${arch}" | head -1 \
+        | sed -E 's/.*"([^"]+)".*/\1/')
+
+    if [ -z "$url" ]; then
+        log_error "未找到 ${arch} 版本, 请手动下载: https://github.com/hanxi/xiaomusic/releases"
+        return 1
+    fi
+
+    log_info "下载: $url"
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    curl -sL "$url" -o "$tmpdir/xiaomusic.tar.gz"
+    tar xzf "$tmpdir/xiaomusic.tar.gz" -C "$tmpdir"
+    if [ -f "$tmpdir/xiaomusic" ]; then
+        mv "$tmpdir/xiaomusic" /usr/local/bin/
         chmod +x /usr/local/bin/xiaomusic
         log_info "xiaomusic 已安装"
     else
-        log_error "下载失败, 请手动安装"
+        log_error "下载包结构异常, 请手动安装"
     fi
+    rm -rf "$tmpdir"
 }
 
 install_migpt() {
