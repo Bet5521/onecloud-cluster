@@ -3,7 +3,7 @@ nodes:
     host: edge-01.lan
     ip: 192.168.1.101
     wg_ip: 10.8.0.101
-    role: edge-gateway
+    role: edge
     arch: armv7l
     cpu: Amlogic S805
     memory: 1024MB
@@ -18,7 +18,7 @@ nodes:
     host: iot-02.lan
     ip: 192.168.1.102
     wg_ip: 10.8.0.102
-    role: iot-core
+    role: iot
     arch: armv7l
     cpu: Amlogic S805
     memory: 1024MB
@@ -33,7 +33,7 @@ nodes:
     host: storage-03.lan
     ip: 192.168.1.103
     wg_ip: 10.8.0.103
-    role: storage-sync
+    role: storage
     arch: armv7l
     cpu: Amlogic S805
     memory: 1024MB
@@ -42,7 +42,7 @@ nodes:
       data: /dev/mmcblk1p1
       data_mount: /mnt/sd
     sd_mount: /mnt/sd
-    services: [syncthing, verysync, aria2, cupsd, cups-web]
+    services: [syncthing, verysync, aria2, ariang, cupsd, cups-web]
 
 network:
   lan_subnet: 192.168.1.0/24

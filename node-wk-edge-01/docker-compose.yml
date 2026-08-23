@@ -1,12 +1,10 @@
-version: "3.8"
-
 services:
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: cloudflared
     restart: unless-stopped
     env_file: .env
-    command: tunnel run
+    command: tunnel --no-autoupdate run
     environment:
       - TUNNEL_TOKEN=${CF_TUNNEL_TOKEN}
       - TZ=${TZ}
@@ -78,7 +76,7 @@ services:
       - MEMOS_PORT=${MEMOS_PORT}
       - MEMOS_DRIVER=sqlite
     ports:
-      - "5230:5230"
+      - "${MEMOS_PORT}:${MEMOS_PORT}"
     volumes:
       - ./memos/data:/var/opt/memos
     logging:

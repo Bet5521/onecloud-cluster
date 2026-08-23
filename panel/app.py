@@ -17,6 +17,31 @@ CORS(app)
 
 CONFIG_PATH = os.environ.get("PANEL_CONFIG", os.path.join(os.path.dirname(__file__), "config.json"))
 
+# ---- 认证配置 ----
+# 通过环境变量 PANEL_USER/PANEL_PASS 设置账号密码
+PANEL_USER = os.environ.get("PANEL_USER", "admin")
+PANEL_PASS = os.environ.get("PANEL_PASS", "changeme")
+
+# 白名单命令前缀（只允许执行这些开头的命令）
+ALLOWED_CMD_PREFIXES = (
+    "free", "df", "ls ", "cat /proc", "uptime", "hostname",
+    "docker ps", "docker stats", "docker inspect", "docker logs",
+    "systemctl status", "systemctl is-active",
+    "ip a", "ip addr", "ss -", "netstat",
+    "cat /etc/os-release", "uname", "whoami", "date",
+)
+
+def is_command_safe(command: str) -> bool:
+    """白名单校验：只允许预定义的安全命令"""
+    cmd = command.strip().lower()
+    # 先做基础黑名单拦截（双保险）
+    blocked = ("rm -rf", "mkfs", "dd if=", "shutdown", "reboot", "poweroff",
+              ":(){", "fork bomb", "wget http", "curl http", ">/dev/sd")
+    if any(b in cmd for b in blocked):
+        return False
+    # 白名单匹配
+    return any(cmd.startswith(p) for p in ALLOWED_CMD_PREFIXES)
+
 def load_config():
     try:
         with open(CONFIG_PATH) as f:
@@ -184,8 +209,19 @@ def service_action(node_name, svc_name, action):
 
     return jsonify({"ok": False, "error": f"未知操作: {action}"}), 400
 
+def _check_auth():
+    """简单 Basic Auth 校验，失败返回 None，成功返回 True"""
+    auth = request.authorization
+    if not auth or auth.username != PANEL_USER or auth.password != PANEL_PASS:
+        return False
+    return True
+
 @app.route("/api/exec", methods=["POST"])
 def exec_command():
+    # 认证检查
+    if not _check_auth():
+        return jsonify({"ok": False, "error": "未授权: 需要 Basic Auth 认证"}), 401
+
     data = request.json or {}
     node_name = data.get("node")
     command = data.get("command", "")
@@ -195,11 +231,9 @@ def exec_command():
     if not node:
         return jsonify({"ok": False, "error": "节点未找到"}), 404
 
-    # 安全限制: 只允许非破坏性命令
-    dangerous = ["rm -rf", "mkfs", "dd if=", "shutdown", "reboot", "poweroff"]
-    for d in dangerous:
-        if d in command.lower():
-            return jsonify({"ok": False, "error": "危险命令被拒绝"}), 403
+    # 安全限制: 白名单机制（只允许预定义的安全命令）
+    if not is_command_safe(command):
+        return jsonify({"ok": False, "error": "命令不在白名单中, 已拒绝 (仅允许: free/df/ls/docker ps/uptime 等只读命令)"}), 403
 
     result = run_ssh(node["ip"], command, timeout=30)
     return jsonify({"ok": result["ok"], "output": result["stdout"], "error": result["stderr"]})

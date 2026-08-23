@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   homeassistant:
     image: ${HA_IMAGE}
@@ -11,7 +9,6 @@ services:
     environment:
       - TZ=${TZ}
       - HOMEASSISTANT_URL=http://${NODE_IP}:8123
-      - ALLOWED_HOSTS=${NODE_IP},localhost,*.${DOMAIN}
     volumes:
       - ./homeassistant:/config
       - /run/dbus:/run/dbus:ro
