@@ -24,9 +24,9 @@ log_step()    { echo -e "\n${BLUE}${BOLD}==> $*${NC}"; }
 log_success() { echo -e "${GREEN}${BOLD}✓ $*${NC}"; }
 
 # ---- 全局配置 ----
-DATA_DIR="/mnt/sd/srv"
+DATA_DIR="/mnt/sd/srv"          # 数据根目录(优先 SD 卡)
 [ -d /mnt/sd ] || DATA_DIR="/opt/onecloud/srv"
-COMPOSE_DIR="${DATA_DIR}"
+COMPOSE_DIR="${DATA_DIR}"       # docker-compose 目录
 TZ="Asia/Shanghai"
 PUID=1000
 PGID=1000
@@ -35,6 +35,7 @@ PGID=1000
 # 工具函数
 # ============================================================
 
+# 检测是否 root
 check_root() {
     if [ "$(id -u)" -ne 0 ]; then
         log_error "请使用 root 运行: sudo bash $0"
@@ -42,8 +43,10 @@ check_root() {
     fi
 }
 
+# 检测命令是否存在
 has_cmd() { command -v "$1" &>/dev/null; }
 
+# 确保安装了某个包
 ensure_pkg() {
     local pkg=$1
     if ! dpkg -l "$pkg" &>/dev/null 2>&1; then
@@ -51,6 +54,8 @@ ensure_pkg() {
     fi
 }
 
+# 检测端口是否被占用
+# 参数: $1=端口号 $2=协议(tcp/udp)
 check_port() {
     local port=$1 proto=${2:-tcp}
     if has_cmd ss; then
@@ -63,6 +68,7 @@ check_port() {
     fi
 }
 
+# 获取占用端口的进程
 get_port_holder() {
     local port=$1
     if has_cmd ss; then
@@ -72,6 +78,7 @@ get_port_holder() {
     fi
 }
 
+# 检测 Docker 是否可用
 ensure_docker() {
     if ! has_cmd docker; then
         log_warn "Docker 未安装, 正在安装..."
@@ -88,6 +95,7 @@ ensure_docker() {
     log_success "Docker 可用"
 }
 
+# 确保有 jq(用于 JSON 处理)
 ensure_tools() {
     local need=()
     has_cmd jq     || need+=("jq")
@@ -101,11 +109,18 @@ ensure_tools() {
     fi
 }
 
+# 获取 GitHub 最新版本号
 get_latest_release() {
     local repo=$1
     curl -sL "https://api.github.com/repos/${repo}/releases/latest" 2>/dev/null \
         | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/'
 }
+
+# ============================================================
+# 服务定义表
+# 格式: id|显示名|分类|类型(disk/docker/native)|端口列表|安装函数|描述
+# 端口格式: port/proto,port/proto,...
+# ============================================================
 
 SERVICE_COUNT=0
 declare -a SVC_ID SVC_NAME SVC_CAT SVC_TYPE SVC_PORTS SVC_FUNC SVC_DESC
@@ -121,9 +136,11 @@ add_service() {
     ((SERVICE_COUNT++))
 }
 
+# ---- 磁盘管理 ----
 add_service "usb_mount"    "U盘自动挂载"       "磁盘管理" "disk"    ""                                          "mount_usb"        "自动检测U盘并挂载, 写入fstab"
 add_service "sd_mount"     "SD卡自动挂载"      "磁盘管理" "disk"    ""                                          "mount_sd"         "检测SD卡并格式化挂载, 可迁移Docker数据"
 
+# ---- Docker 服务 ----
 add_service "adguard"     "AdGuard Home"      "Docker服务" "docker" "53/tcp,53/udp,3000/tcp"                   "install_adguard"   "DNS 广告过滤, 网页管理"
 add_service "cloudflared" "Cloudflare Tunnel" "Docker服务" "docker" ""                                          "install_cloudflared" "内网穿透, 无需公网IP"
 add_service "wireguard"   "WireGuard VPN"     "Docker服务" "docker" "51820/udp"                               "install_wireguard"  "轻量级 VPN, 支持多客户端"
@@ -135,17 +152,24 @@ add_service "aria2"       "aria2 下载"         "Docker服务" "docker" "6800/t
 add_service "cupsd"       "CUPS 打印服务"      "Docker服务" "docker" "631/tcp"                                "install_cupsd"      "网络打印服务器"
 add_service "cups_web"    "CUPS-Web 管理"      "Docker服务" "docker" "632/tcp"                                "install_cups_web"   "CUPS 网页管理界面"
 
+# ---- 原生服务 ----
 add_service "clash"       "Clash/mihomo 代理"   "原生服务" "native" "9090/tcp"                               "install_clash"      "Clash Meta 代理, ARM 优化"
 add_service "xiaomusic"   "xiaomusic 小爱音乐" "原生服务" "native" "8081/tcp"                               "install_xiaomusic"  "小爱音箱音乐播放器"
 add_service "migpt"       "migpt AI助手"       "原生服务" "native" "8082/tcp"                               "install_migpt"      "小米AI对话代理"
 add_service "verysync"    "verysync 微力同步"   "原生服务" "native" "19900/tcp"                              "install_verysync"   "高效文件同步"
 
+# ---- 管理面板 ----
 add_service "panel"       "集群控制面板"        "管理面板" "native" "9000/tcp"                               "install_panel"      "Flask 集群管理面板"
 
+# ============================================================
+# 端口冲突检测
+# ============================================================
+
+# 检测所有选中服务的端口, 返回冲突列表
 check_port_conflicts() {
     local -a selected_ids=("$@")
     local conflicts=0
-    local checked=()
+    local checked=()  # 已检测过的端口(避免重复检测)
 
     echo ""
     log_step "端口冲突检测"
@@ -164,6 +188,7 @@ check_port_conflicts() {
 
         [ -z "$ports" ] && continue
 
+        # 解析端口列表
         IFS=',' read -ra port_list <<< "$ports"
         for entry in "${port_list[@]}"; do
             local port proto
@@ -171,6 +196,7 @@ check_port_conflicts() {
             proto="${entry#*/}"
             [ "$proto" = "$entry" ] && proto="tcp"
 
+            # 跳过已检测的端口
             local key="${port}/${proto}"
             local already=0
             for k in "${checked[@]:-}"; do
@@ -194,6 +220,10 @@ check_port_conflicts() {
     return $conflicts
 }
 
+# ============================================================
+# 磁盘挂载 - U盘
+# ============================================================
+
 mount_usb() {
     log_step "U盘自动挂载"
 
@@ -201,14 +231,17 @@ mount_usb() {
     echo "检测可用的块设备..."
     echo "------------------------------------------"
 
+    # 列出所有块设备, 排除系统盘和 SD 卡
     local devices=()
     local idx=0
     while read -r name size type model; do
         [ "$type" = "disk" ] || continue
+        # 跳过 SD 卡 (mmcblk) 和系统盘
         [[ "$name" == mmcblk* ]] && continue
         [[ "$name" == loop* ]] && continue
         [[ "$name" == sr* ]] && continue
 
+        # 检查是否已挂载
         local mounted
         mounted=$(lsblk -n -o MOUNTPOINT "/dev/$name" 2>/dev/null | head -1)
 
@@ -235,6 +268,7 @@ mount_usb() {
     local dev="${devices[$choice]}"
     log_info "选择设备: $dev"
 
+    # 检查是否已有分区
     local partitions
     partitions=$(lsblk -ln -o NAME "$dev" 2>/dev/null | grep -E "^${dev##*/}p?[0-9]+" | head -1)
 
@@ -244,11 +278,13 @@ mount_usb() {
         parted -s "$dev" mklabel gpt 2>/dev/null || parted -s "$dev" mklabel msdos
         parted -s "$dev" mkpart primary ext4 1MiB 100%
         sleep 2
+        # 自动找到新创建的分区
         target_part=$(lsblk -ln -o NAME "$dev" 2>/dev/null | grep -E "^${dev##*/}p?[0-9]+" | head -1)
         target_part="/dev/$target_part"
         mkfs.ext4 -F "$target_part"
     else
         target_part="/dev/$partitions"
+        # 检查文件系统
         local fstype
         fstype=$(lsblk -ln -o FSTYPE "$target_part" 2>/dev/null | head -1)
         if [ -z "$fstype" ]; then
@@ -262,6 +298,7 @@ mount_usb() {
         fi
     fi
 
+    # 挂载
     local mountpoint="/mnt/usb"
     local uuid
     uuid=$(blkid -s UUID -o value "$target_part" 2>/dev/null)
@@ -271,6 +308,7 @@ mount_usb() {
         mount "$target_part" "$mountpoint"
     fi
 
+    # 写入 fstab (用 UUID 确保稳定)
     if [ -n "$uuid" ] && ! grep -q "$uuid" /etc/fstab; then
         echo "UUID=$uuid $mountpoint ext4 defaults,noatime,nofail 0 2" >> /etc/fstab
         log_success "已写入 fstab (UUID=$uuid)"
@@ -279,14 +317,20 @@ mount_usb() {
     log_success "U盘已挂载到 $mountpoint"
     df -h "$mountpoint" | tail -1
 
+    # 可选: 创建服务数据目录
     read -p "是否在此设备创建服务数据目录 ($mountpoint/srv)? [Y/n] " mkdata
     [[ "$mkdata" =~ ^[Nn]$ ]] || {
         mkdir -p "$mountpoint/srv"
         log_info "数据目录: $mountpoint/srv"
+        # 更新全局 DATA_DIR
         DATA_DIR="$mountpoint/srv"
         log_info "后续服务数据将安装到 $DATA_DIR"
     }
 }
+
+# ============================================================
+# 磁盘挂载 - SD卡
+# ============================================================
 
 mount_sd() {
     log_step "SD卡自动挂载"
@@ -300,6 +344,7 @@ mount_sd() {
     while read -r name size model; do
         [[ "$name" == mmcblk* ]] || continue
         [[ "$name" == *boot* ]] && continue
+        # 只要 disk 级别
         echo "$name" | grep -qE '^mmcblk[0-9]+$' || continue
 
         sd_devs[$idx]="/dev/$name"
@@ -326,8 +371,9 @@ mount_sd() {
     local mountpoint="/mnt/sd"
     local part="${dev}p1"
 
+    # 检查分区是否存在
     if [ ! -b "$part" ]; then
-        part="${dev}1"
+        part="${dev}1"  # 某些设备命名方式
     fi
 
     if [ ! -b "$part" ]; then
@@ -352,11 +398,13 @@ mount_sd() {
         fi
     fi
 
+    # 挂载
     mkdir -p "$mountpoint"
     if ! mountpoint -q "$mountpoint"; then
         mount "$part" "$mountpoint"
     fi
 
+    # 写入 fstab
     local uuid
     uuid=$(blkid -s UUID -o value "$part" 2>/dev/null)
     if [ -n "$uuid" ] && ! grep -q "$uuid" /etc/fstab; then
@@ -367,9 +415,11 @@ mount_sd() {
     log_success "SD卡已挂载到 $mountpoint"
     df -h "$mountpoint" | tail -1
 
+    # 创建标准目录结构
     mkdir -p "$mountpoint/srv" "$mountpoint/docker" "$mountpoint/backups"
     log_info "已创建目录: srv/ docker/ backups/"
 
+    # 可选: 迁移 Docker 数据到 SD 卡
     if has_cmd docker; then
         read -p "是否迁移 Docker 数据到 SD 卡? [Y/n] " migrate
         if [[ ! "$migrate" =~ ^[Nn]$ ]]; then
@@ -389,15 +439,22 @@ EOF
         fi
     fi
 
+    # 更新全局数据目录
     DATA_DIR="$mountpoint/srv"
     log_info "后续服务数据将安装到 $DATA_DIR"
 }
 
+# ============================================================
+# Docker 服务安装函数
+# ============================================================
+
+# 通用: 确保服务目录存在
 ensure_svc_dir() {
     local svc=$1
     mkdir -p "${DATA_DIR}/${svc}"
 }
 
+# 通用: 停止并移除旧容器
 remove_old_container() {
     local name=$1
     docker rm -f "$name" 2>/dev/null || true
@@ -489,6 +546,7 @@ install_homeassistant() {
     ensure_svc_dir "homeassistant"
     remove_old_container "homeassistant"
 
+    # Home Assistant 使用 host 网络模式（玩客云 ARMv7 使用第三方 armv7 镜像）
     docker run -d --name homeassistant \
         --restart unless-stopped \
         --network host \
@@ -496,13 +554,13 @@ install_homeassistant() {
         -e TZ=$TZ \
         -v "${DATA_DIR}/homeassistant:/config" \
         -v /run/dbus:/run/dbus:ro \
-        ghcr.io/home-assistant/home-assistant:stable 2>/dev/null || \
+        ghcr.io/adyoull/ha-armv7:latest 2>/dev/null || \
     docker run -d --name homeassistant \
         --restart unless-stopped \
         -p 8123:8123 \
         -e TZ=$TZ \
         -v "${DATA_DIR}/homeassistant:/config" \
-        homeassistant/home-assistant:stable
+        ghcr.io/adyoull/ha-armv7:latest
     log_success "Home Assistant 已启动 -> http://$(hostname -I | awk '{print $1}'):8123"
 }
 
@@ -582,12 +640,6 @@ install_cupsd() {
         -v "${DATA_DIR}/cupsd/config:/etc/cups" \
         -v "${DATA_DIR}/cupsd/printers:/etc/cups/printers" \
         -v /dev:/dev \
-        olbat/cupsd:latest 2>/dev/null || \
-    docker run -d --name cupsd \
-        --restart unless-stopped \
-        -p 631:631 \
-        -e TZ=$TZ \
-        -v "${DATA_DIR}/cupsd/config:/etc/cups" \
         ousia/cupsd:armhf
     log_success "CUPS 已启动 -> https://$(hostname -I | awk '{print $1}'):631"
     log_info "用户: $cups_user  密码: $cups_pass"
@@ -605,7 +657,7 @@ install_cups_web() {
 
     docker run -d --name cups-web \
         --restart unless-stopped \
-        -p 632:632 \
+        -p 632:80 \
         -e TZ=$TZ \
         -e CUPS_HOST="$cups_host" \
         -e CUPS_PORT=631 \
@@ -613,13 +665,17 @@ install_cups_web() {
         nkn-ts/cups-web:armhf 2>/dev/null || \
     docker run -d --name cups-web \
         --restart unless-stopped \
-        -p 632:632 \
+        -p 632:80 \
         -e TZ=$TZ \
         -e CUPS_HOST="$cups_host" \
         -e CUPS_PORT=631 \
         nkn-ts/cups-web:latest
     log_success "CUPS-Web 已启动 -> http://$(hostname -I | awk '{print $1}'):632"
 }
+
+# ============================================================
+# 原生服务安装函数
+# ============================================================
 
 install_clash() {
     log_info "安装 Clash (mihomo)..."
@@ -643,8 +699,10 @@ install_clash() {
         | gunzip > /usr/local/bin/mihomo
     chmod +x /usr/local/bin/mihomo
 
+    # 生成最小配置
     if [ ! -f "${DATA_DIR}/clash/config.yaml" ]; then
         cat > "${DATA_DIR}/clash/config.yaml" << 'EOF'
+# mihomo 最小配置 - 请替换为你的订阅
 mixed-port: 7890
 external-controller: 0.0.0.0:9090
 allow-lan: true
@@ -659,6 +717,7 @@ EOF
         log_warn "已生成最小配置, 请替换为你的订阅: ${DATA_DIR}/clash/config.yaml"
     fi
 
+    # systemd 服务
     cat > /etc/systemd/system/mihomo.service << EOF
 [Unit]
 Description=mihomo (Clash Meta)
@@ -689,20 +748,34 @@ install_xiaomusic() {
         x86_64)        arch="amd64" ;;
     esac
 
+    # 获取下载链接
     local url
     url=$(curl -sL https://api.github.com/repos/hanxi/xiaomusic/releases/latest \
         | grep "browser_download_url" | grep "linux_${arch}" | head -1 \
         | sed -E 's/.*"([^"]+)".*/\1/')
 
     if [ -n "$url" ]; then
-        curl -sL "$url" | tar xz -C /tmp
-        mv /tmp/xiaomusic /usr/local/bin/
-        chmod +x /usr/local/bin/xiaomusic
+        local tmpdir
+        tmpdir=$(mktemp -d)
+        curl -sL "$url" | tar xz -C "$tmpdir"
+        # 解压后用 find 定位二进制 (避免假设压缩包顶层目录名)
+        local BIN_PATH
+        BIN_PATH=$(find "$tmpdir" -name "xiaomusic" -type f | head -1)
+        if [ -n "$BIN_PATH" ]; then
+            mv "$BIN_PATH" /usr/local/bin/
+            chmod +x /usr/local/bin/xiaomusic
+        else
+            log_error "解压后未找到 xiaomusic 二进制, 请手动安装: https://github.com/hanxi/xiaomusic/releases"
+            rm -rf "$tmpdir"
+            return 1
+        fi
+        rm -rf "$tmpdir"
     else
         log_error "下载失败, 请手动安装: https://github.com/hanxi/xiaomusic/releases"
         return 1
     fi
 
+    # 配置
     if [ ! -f "${DATA_DIR}/xiaomusic/config.json" ]; then
         cat > "${DATA_DIR}/xiaomusic/config.json" << 'EOF'
 {
@@ -718,6 +791,7 @@ EOF
 
     mkdir -p /mnt/sd/music/download
 
+    # systemd
     cat > /etc/systemd/system/xiaomusic.service << EOF
 [Unit]
 Description=xiaomusic
@@ -740,9 +814,11 @@ install_migpt() {
     log_info "安装 migpt AI助手..."
     ensure_svc_dir "migpt"
 
+    # 安装 Python 依赖
     apt-get install -y python3-pip python3-venv 2>/dev/null || true
     pip3 install flask flask-cors pyyaml requests 2>/dev/null || true
 
+    # 生成代理脚本
     cat > "${DATA_DIR}/migpt/proxy.py" << 'PYEOF'
 #!/usr/bin/env python3
 """migpt 轻量代理 - 将请求转发到指定 LLM API"""
@@ -753,6 +829,7 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
+# 配置: 修改为你的 LLM API
 LLM_API_URL = os.environ.get("LLM_API_URL", "https://api.openai.com/v1/chat/completions")
 LLM_API_KEY = os.environ.get("LLM_API_KEY", "your-api-key")
 LLM_MODEL = os.environ.get("LLM_MODEL", "gpt-3.5-turbo")
@@ -772,6 +849,7 @@ if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8082)
 PYEOF
 
+    # systemd
     cat > /etc/systemd/system/migpt.service << EOF
 [Unit]
 Description=migpt AI Proxy
@@ -835,9 +913,11 @@ install_panel() {
     ensure_svc_dir "panel"
     local panel_dir="${DATA_DIR}/panel"
 
+    # 安装 Python 依赖
     apt-get install -y python3-pip python3-venv 2>/dev/null || true
     pip3 install flask flask-cors pyyaml requests 2>/dev/null || true
 
+    # 尝试从项目模板复制完整的面板文件
     local script_dir
     script_dir="$(cd "$(dirname "$0")" && pwd)"
     local project_panel="${script_dir}/../panel"
@@ -846,6 +926,7 @@ install_panel() {
         log_info "从项目模板复制面板文件..."
         cp -r "$project_panel"/* "$panel_dir/"
     else
+        # 生成最小面板应用 (fallback)
         log_warn "项目模板未找到, 生成最小面板..."
         cat > "${panel_dir}/app.py" << 'PYEOF'
 #!/usr/bin/env python3
@@ -891,6 +972,7 @@ if __name__ == "__main__":
     app.run(host="0.0.0.0", port=9000)
 PYEOF
 
+        # 生成配置
         if [ ! -f "${panel_dir}/config.json" ]; then
             cat > "${panel_dir}/config.json" << 'EOF'
 {
@@ -904,6 +986,7 @@ PYEOF
 EOF
         fi
 
+        # 生成最小前端
         mkdir -p "${panel_dir}/templates" "${panel_dir}/static/css"
         cat > "${panel_dir}/templates/index.html" << 'EOF'
 <!DOCTYPE html>
@@ -934,6 +1017,7 @@ fetch("/api/status").then(r=>r.json()).then(d=>{
 EOF
     fi
 
+    # systemd
     cat > /etc/systemd/system/onecloud-panel.service << EOF
 [Unit]
 Description=OneCloud Cluster Panel
@@ -953,11 +1037,17 @@ EOF
     log_success "面板已启动 -> http://$(hostname -I | awk '{print $1}'):9000"
 }
 
+# ============================================================
+# 交互式多选菜单
+# ============================================================
+
+# 当前选中状态
 declare -a SELECTED
 for ((i=0; i<SERVICE_COUNT; i++)); do
     SELECTED[$i]=0
 done
 
+# 显示菜单
 draw_menu() {
     local cursor=$1
     clear
@@ -971,20 +1061,25 @@ draw_menu() {
 
     local current_cat=""
     for ((i=0; i<SERVICE_COUNT; i++)); do
+        # 分类标题
         if [ "${SVC_CAT[$i]}" != "$current_cat" ]; then
             current_cat="${SVC_CAT[$i]}"
             echo -e "  ${BLUE}${BOLD}── ${current_cat} ──${NC}"
         fi
 
+        # 选中标记
         local mark
         [ "${SELECTED[$i]}" -eq 1 ] && mark="${GREEN}✔${NC}" || mark="${DIM}○${NC}"
 
+        # 光标
         local cursor_mark=" "
         [ $i -eq $cursor ] && cursor_mark="${YELLOW}▶${NC}"
 
+        # 端口信息
         local port_info=""
         [ -n "${SVC_PORTS[$i]}" ] && port_info="${DIM}[${SVC_PORTS[$i]}]${NC} "
 
+        # 行
         local line="${cursor_mark} [${mark}] ${SVC_NAME[$i]}"
         printf "  %-30s %s%s\n" "$line" "$port_info" "${DIM}${SVC_DESC[$i]}${NC}"
     done
@@ -997,36 +1092,43 @@ draw_menu() {
     echo -e "  ${BOLD}已选: ${count} 项${NC}"
 }
 
+# 多选菜单主循环
 multiselect() {
     local cursor=0
 
     while true; do
         draw_menu "$cursor"
 
+        # 读取按键
         read -rsn1 key
         case "$key" in
             $'\x1b')
+                # 方向键序列
                 read -rsn1 -t 0.1 key2
                 if [ "$key2" = "[" ]; then
                     read -rsn1 -t 0.1 key3
                     case "$key3" in
-                        A) [ $cursor -gt 0 ] && ((cursor--)) ;;
-                        B) [ $cursor -lt $((SERVICE_COUNT-1)) ] && ((cursor++)) ;;
-                        C) ;;
-                        D) ;;
+                        A) [ $cursor -gt 0 ] && ((cursor--)) ;;           # ↑
+                        B) [ $cursor -lt $((SERVICE_COUNT-1)) ] && ((cursor++)) ;;  # ↓
+                        C) ;;  # → (忽略)
+                        D) ;;  # ← (忽略)
                     esac
                 fi
                 ;;
             ' ')
+                # 空格: 切换选中
                 SELECTED[$cursor]=$((1 - ${SELECTED[$cursor]}))
                 ;;
             'a'|'A')
+                # 全选
                 for ((i=0; i<SERVICE_COUNT; i++)); do SELECTED[$i]=1; done
                 ;;
             'n'|'N')
+                # 全不选
                 for ((i=0; i<SERVICE_COUNT; i++)); do SELECTED[$i]=0; done
                 ;;
             '')
+                # 回车: 确认
                 local count=0
                 for ((i=0; i<SERVICE_COUNT; i++)); do
                     [ "${SELECTED[$i]}" -eq 1 ] && ((count++))
@@ -1046,10 +1148,15 @@ multiselect() {
     done
 }
 
+# ============================================================
+# 主流程
+# ============================================================
+
 main() {
     check_root
     ensure_tools
 
+    # 检测系统信息
     echo ""
     log_step "系统信息"
     echo "  主机名:  $(hostname)"
@@ -1059,6 +1166,7 @@ main() {
     echo "  内核:    $(uname -r)"
     echo "  数据目录: $DATA_DIR"
 
+    # Docker 检测
     if has_cmd docker; then
         echo "  Docker:  $(docker --version 2>/dev/null | awk '{print $1,$2,$3}')"
     else
@@ -1066,8 +1174,10 @@ main() {
     fi
     echo ""
 
+    # 显示菜单
     multiselect
 
+    # 收集选中的服务
     local -a selected_ids=()
     local -a selected_indices=()
     for ((i=0; i<SERVICE_COUNT; i++)); do
@@ -1077,11 +1187,13 @@ main() {
         fi
     done
 
+    # 创建数据目录
     mkdir -p "$DATA_DIR"
 
+    # ---- 端口冲突检测 ----
     local has_conflict=false
     if check_port_conflicts "${selected_ids[@]}"; then
-        :
+        : # 无冲突
     else
         has_conflict=true
     fi
@@ -1093,6 +1205,7 @@ main() {
         [[ "$cont" =~ ^[Yy]$ ]] || { log_info "已取消"; exit 0; }
     fi
 
+    # ---- 确认安装 ----
     echo ""
     log_step "即将安装以下服务:"
     for idx in "${selected_indices[@]}"; do
@@ -1102,6 +1215,7 @@ main() {
     read -p "确认开始安装? [y/N] " confirm
     [[ "$confirm" =~ ^[Yy]$ ]] || { log_info "已取消"; exit 0; }
 
+    # ---- 逐个安装 ----
     local success=0
     local failed=0
     local -a failed_list=()
@@ -1124,6 +1238,7 @@ main() {
         fi
     done
 
+    # ---- 安装总结 ----
     echo ""
     echo -e "${BOLD}${CYAN}"
     echo "╔══════════════════════════════════════════════════════════╗"
@@ -1140,6 +1255,7 @@ main() {
         done
     fi
 
+    # 显示服务访问地址
     echo ""
     log_step "服务访问地址"
     local my_ip
@@ -1147,6 +1263,7 @@ main() {
     for idx in "${selected_indices[@]}"; do
         local ports="${SVC_PORTS[$idx]}"
         local name="${SVC_NAME[$idx]}"
+        # 取第一个 TCP 端口
         local first_port=""
         if [ -n "$ports" ]; then
             local first_entry="${ports%%,*}"
