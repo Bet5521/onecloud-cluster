@@ -31,7 +31,7 @@ services:
       - PUID=${PUID}
       - PGID=${PGID}
     ports:
-      - "8080:80"
+      - "${PIWIGO_PORT}:80"
     volumes:
       - ./piwigo/config:/config
       - ./piwigo/gallery:/gallery
@@ -40,5 +40,5 @@ services:
       driver: json-file
       options:
         max-size: 5m
-        max-file: "2"
+        max-file: "3"
     mem_limit: 128m

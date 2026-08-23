@@ -24,7 +24,7 @@
 
 ### 2.3 NODE-03: Storage & Sync (192.168.1.103)
 - LAN: 192.168.1.103 / WG: 10.8.0.103
-- Docker: Syncthing, aria2-pro, CUPS, CUPS Web
+- Docker: Syncthing, aria2-pro, AriaNg, CUPS, CUPS Web
 - 原生: verysync
 
 ## 3. 网络架构
@@ -57,9 +57,14 @@ NODE-03 wg0: 10.8.0.103/32
 | 9090 | TCP | Clash API | edge-01 |
 | 8123 | TCP | Home Assistant | iot-02 |
 | 8080 | TCP | Piwigo | iot-02 |
+| 8081 | TCP | xiaomusic | iot-02 |
+| 8082 | TCP | migpt | iot-02 |
 | 631 | TCP | CUPS | storage-03 |
+| 632 | TCP | CUPS Web | storage-03 |
 | 6800 | TCP | aria2 RPC | storage-03 |
+| 6880 | TCP | AriaNg Web | storage-03 |
 | 8384 | TCP | Syncthing WebUI | storage-03 |
+| 19900 | TCP | verysync | storage-03 |
 | 22000 | TCP/UDP | Syncthing | storage-03 |
 
 ## 4. 存储架构

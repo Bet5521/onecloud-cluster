@@ -59,9 +59,9 @@ wk-edge-01 (192.168.1.101)
 | AriaNg | storage-03 | 6880 | TCP | ❌ 内网 |
 | CUPS | storage-03 | 631 | TCP | ❌ 内网 |
 | CUPS Web | storage-03 | 632 | TCP | ❌ 内网 |
-| xiaomusic | iot-02 | 8090 | TCP | ❌ 内网 |
-| migpt | iot-02 | 8180 | TCP | ❌ 内网 |
-| verysync | storage-03 | 1188 | TCP | ❌ 内网 |
+| xiaomusic | iot-02 | 8081 | TCP | ❌ 内网 |
+| migpt | iot-02 | 8082 | TCP | ❌ 内网 |
+| verysync | storage-03 | 19900 | TCP | ❌ 内网 |
 
 ---
 
@@ -108,7 +108,8 @@ onecloud-cluster/
 
 ```bash
 ./scripts/deploy.sh
-./scripts/deploy.sh --exec "docker-compose up -d"
+# 在每个节点上手动启动:
+# ssh root@<node> 'cd /mnt/sd/srv/<node-name> && docker-compose up -d'
 ```
 
 ### 4. 启动控制面板
