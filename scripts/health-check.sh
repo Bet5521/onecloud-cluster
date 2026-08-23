@@ -4,6 +4,8 @@
 # 检查各节点和服务状态
 # ============================================================
 
+set -u
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -12,6 +14,10 @@ NC='\033[0m'
 OK="${GREEN}[OK]${NC}"
 FAIL="${RED}[FAIL]${NC}"
 WARN="${YELLOW}[WARN]${NC}"
+
+log_info() { echo -e "${GREEN}[INFO]${NC} $*"; }
+log_warn() { echo -e "${YELLOW}[WARN]${NC} $*"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $*"; }
 
 echo ""
 echo "=========================================="

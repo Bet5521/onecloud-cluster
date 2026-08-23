@@ -4,6 +4,8 @@
 # 在节点上运行, 安装指定服务的原生二进制或 Docker
 # ============================================================
 
+set -euo pipefail
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -46,7 +48,7 @@ install_mihomo() {
         curl -sL "https://github.com/MetaCubeX/mihomo/releases/download/${VER}/mihomo-linux-armv7-${VER}.gz" \
             | gunzip > /usr/local/bin/mihomo
         chmod +x /usr/local/bin/mihomo
-        log_info "mihomo 版本: $(\$(which mihomo) -v 2>&1 | head -1 || echo 'ok')"
+        log_info "mihomo 版本: $(which mihomo) -v 2>&1 | head -1 || echo 'ok')"
     else
         log_error "下载失败, 请手动安装"
     fi
