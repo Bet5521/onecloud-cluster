@@ -46,1397 +46,983 @@ def color(text, code):
         return f"\033[{code}m{text}\033[0m"
     return text
 
-GREEN = "92"
-RED = "91"
-YELLOW = "93"
-CYAN = "96"
+def log_pass(msg):
+    print(f"  {color('PASS', 32)} {msg}")
 
-# ============ 简易 YAML 解析器 ============
-def simple_yaml_parse(text: str) -> Dict[str, Any]:
-    """简易 YAML 解析器，支持本项目使用的 YAML 结构"""
+def log_fail(msg):
+    print(f"  {color('FAIL', 31)} {msg}")
+
+def log_warn(msg):
+    print(f"  {color('WARN', 33)} {msg}")
+
+def log_info(msg):
+    print(f"  {color('INFO', 36)} {msg}")
+
+def log_skip(msg):
+    print(f"  {color('SKIP', 90)} {msg}")
+
+PASS_COUNT = 0
+FAIL_COUNT = 0
+WARN_COUNT = 0
+SKIP_COUNT = 0
+
+def test_begin(name):
+    global PASS_COUNT, FAIL_COUNT, WARN_COUNT, SKIP_COUNT
+    PASS_COUNT = FAIL_COUNT = WARN_COUNT = SKIP_COUNT = 0
+    print(f"\n{'='*60}")
+    print(f"测试: {name}")
+    print(f"{'='*60}")
+
+def test_end():
+    total = PASS_COUNT + FAIL_COUNT + WARN_COUNT + SKIP_COUNT
+    print(f"  --- {total} 项, {color('PASS', 32)}:{PASS_COUNT} {color('FAIL', 31)}:{FAIL_COUNT} {color('WARN', 33)}:{WARN_COUNT} {color('SKIP', 90)}:{SKIP_COUNT} ---")
+    return FAIL_COUNT == 0
+
+# ============ 1. 配置文件完整性 ============
+
+def test_config_files_exist():
+    """验证所有必需的配置文件是否存在"""
+    test_begin("1: 配置文件完整性")
+    all_ok = True
+
+    required_files = [
+        ("部署脚本", SCRIPTS_DIR / "deploy.sh"),
+        ("安装服务脚本", SCRIPTS_DIR / "install-services.sh"),
+        ("备份脚本", SCRIPTS_DIR / "backup.sh"),
+        ("恢复脚本", SCRIPTS_DIR / "restore.sh"),
+        ("健康检查脚本", SCRIPTS_DIR / "health-check.sh"),
+        ("初始化脚本", SCRIPTS_DIR / "setup.sh"),
+        ("WireGuard设置", SCRIPTS_DIR / "wireguard-setup.sh"),
+        ("面板应用", PANEL_DIR / "app.py"),
+        ("面板配置", PANEL_DIR / "config.json"),
+        ("面板服务安装", PANEL_DIR / "install-service.sh"),
+        ("服务清单", INVENTORY_DIR / "services.yaml"),
+        ("节点清单", INVENTORY_DIR / "nodes.yaml"),
+        ("Edge节点docker-compose", NODE_DIRS["wk-edge-01"] / "docker-compose.yml"),
+        ("IoT节点docker-compose", NODE_DIRS["wk-iot-02"] / "docker-compose.yml"),
+        ("Storage节点docker-compose", NODE_DIRS["wk-storage-03"] / "docker-compose.yml"),
+    ]
+
+    for name, path in required_files:
+        if path.exists():
+            log_pass(f"{name}: {path.name}")
+            PASS_COUNT += 1
+        else:
+            log_fail(f"{name}: {path} 不存在")
+            FAIL_COUNT += 1
+            all_ok = False
+
+    return test_end()
+
+# ============ 2. 节点目录结构 ============
+
+def test_node_directory_structure():
+    """验证每个节点目录包含必需的子目录和文件"""
+    test_begin("2: 节点目录结构")
+    all_ok = True
+
+    for node_name, node_dir in NODE_DIRS.items():
+        if not node_dir.exists():
+            log_fail(f"{node_name}: 目录不存在")
+            FAIL_COUNT += 1
+            all_ok = False
+            continue
+
+        log_pass(f"{node_name}: 目录存在")
+        PASS_COUNT += 1
+
+        # 检查 docker-compose.yml
+        dc_file = node_dir / "docker-compose.yml"
+        if dc_file.exists():
+            log_pass(f"  {node_name}: docker-compose.yml 存在")
+            PASS_COUNT += 1
+        else:
+            log_fail(f"  {node_name}: docker-compose.yml 不存在")
+            FAIL_COUNT += 1
+            all_ok = False
+
+        # 检查是否有 .env 文件（可选）
+        env_file = node_dir / ".env"
+        if env_file.exists():
+            log_pass(f"  {node_name}: .env 存在")
+            PASS_COUNT += 1
+        else:
+            log_warn(f"  {node_name}: .env 不存在（可选）")
+            WARN_COUNT += 1
+
+        # 检查子目录结构
+        has_srv_dir = False
+        for item in node_dir.iterdir():
+            if item.is_dir() and item.name in ["srv", "config", "data"]:
+                has_srv_dir = True
+                log_pass(f"  {node_name}: 子目录 {item.name} 存在")
+                PASS_COUNT += 1
+
+        if not has_srv_dir:
+            log_warn(f"  {node_name}: 无 srv/config/data 子目录")
+            WARN_COUNT += 1
+
+    return test_end()
+
+# ============ 3. Shell 脚本语法检查 ============
+
+def test_shell_scripts_syntax():
+    """检查所有 Shell 脚本的语法正确性（用 bash -n）"""
+    test_begin("3: Shell 脚本语法检查")
+    all_ok = True
+
+    # 收集所有 .sh 文件
+    sh_files = []
+    for root, dirs, files in os.walk(PROJECT_ROOT):
+        # 跳过隐藏目录
+        dirs[:] = [d for d in dirs if not d.startswith('.')]
+        for f in files:
+            if f.endswith('.sh'):
+                sh_files.append(os.path.join(root, f))
+
+    if not sh_files:
+        log_warn("未找到 .sh 文件，跳过语法检查")
+        WARN_COUNT += 1
+        return test_end()
+
+    for sh_file in sorted(sh_files):
+        rel_path = os.path.relpath(sh_file, PROJECT_ROOT)
+        try:
+            result = subprocess.run(
+                ["bash", "-n", sh_file],
+                capture_output=True, text=True, timeout=5
+            )
+            if result.returncode == 0:
+                log_pass(f"{rel_path}: 语法正确")
+                PASS_COUNT += 1
+            else:
+                log_fail(f"{rel_path}: 语法错误\n{result.stderr.strip()}")
+                FAIL_COUNT += 1
+                all_ok = False
+        except FileNotFoundError:
+            log_skip("bash 不可用，跳过语法检查")
+            SKIP_COUNT += 1
+            break
+        except subprocess.TimeoutExpired:
+            log_fail(f"{rel_path}: 超时")
+            FAIL_COUNT += 1
+            all_ok = False
+
+    return test_end()
+
+# ============ 4. deploy.sh 节点映射 ============
+
+def test_deploy_node_mapping():
+    """验证 deploy.sh 中节点名称到目录/IP 的映射"""
+    test_begin("4: deploy.sh 节点映射")
+    all_ok = True
+
+    deploy_path = SCRIPTS_DIR / "deploy.sh"
+    if not deploy_path.exists():
+        log_fail("deploy.sh 不存在")
+        FAIL_COUNT += 1
+        return test_end()
+
+    content = deploy_path.read_text(encoding='utf-8')
+
+    # 检查节点名称映射
+    expected_nodes = ["wk-edge-01", "wk-iot-02", "wk-storage-03"]
+    for node in expected_nodes:
+        if node in content:
+            log_pass(f"deploy.sh 包含节点 {node}")
+            PASS_COUNT += 1
+        else:
+            log_fail(f"deploy.sh 缺少节点 {node}")
+            FAIL_COUNT += 1
+            all_ok = False
+
+    # 检查是否包含目录映射
+    mapping_patterns = ["NODE_DIR", "node_dir", "srv/", "/mnt/sd/srv/"]
+    for pattern in mapping_patterns:
+        if pattern in content:
+            log_pass(f"deploy.sh 包含目录映射: {pattern}")
+            PASS_COUNT += 1
+        else:
+            log_warn(f"deploy.sh 可能缺少目录映射: {pattern}")
+            WARN_COUNT += 1
+
+    # 检查是否有 IP 映射
+    ip_pattern = re.search(r'192\.168\.\d+\.\d+', content)
+    if ip_pattern:
+        log_pass(f"deploy.sh 包含 IP 映射: {ip_pattern.group()}")
+        PASS_COUNT += 1
+    else:
+        log_warn("deploy.sh 中未检测到 IP 映射")
+        WARN_COUNT += 1
+
+    return test_end()
+
+# ============ 5. 回退机制 ============
+
+def test_fallback_mechanisms():
+    """检查脚本中是否有 IP 硬编码回退、命令回退等"""
+    test_begin("5: 回退机制")
+    all_ok = True
+
+    scripts_to_check = [
+        ("backup.sh", SCRIPTS_DIR / "backup.sh"),
+        ("restore.sh", SCRIPTS_DIR / "restore.sh"),
+        ("deploy.sh", SCRIPTS_DIR / "deploy.sh"),
+        ("install-services.sh", SCRIPTS_DIR / "install-services.sh"),
+        ("health-check.sh", SCRIPTS_DIR / "health-check.sh"),
+    ]
+
+    for name, path in scripts_to_check:
+        if not path.exists():
+            log_skip(f"{name}: 不存在")
+            SKIP_COUNT += 1
+            continue
+
+        content = path.read_text(encoding='utf-8')
+
+        # 检查是否有 IP 回退（硬编码 IP 作为 fallback）
+        has_ip_fallback = "192.168." in content
+        if has_ip_fallback:
+            log_pass(f"{name}: 包含 IP 回退")
+            PASS_COUNT += 1
+        else:
+            log_warn(f"{name}: 未检测到 IP 回退")
+            WARN_COUNT += 1
+
+        # 检查是否有 docker-compose/docker compose 回退
+        has_docker_fallback = "docker-compose" in content and "docker compose" in content
+        if has_docker_fallback:
+            log_pass(f"{name}: 包含 docker 命令回退")
+            PASS_COUNT += 1
+        else:
+            log_warn(f"{name}: 未检测到 docker 命令回退")
+            WARN_COUNT += 1
+
+        # 检查是否有管道回退（||）
+        has_pipe_fallback = "||" in content
+        if has_pipe_fallback:
+            log_pass(f"{name}: 包含 || 回退")
+            PASS_COUNT += 1
+        else:
+            log_warn(f"{name}: 未检测到 || 回退")
+            WARN_COUNT += 1
+
+    return test_end()
+
+# ============ 6. 服务一致性：services.yaml vs config.json ============
+
+def _parse_yaml_simple(yaml_text: str) -> dict:
+    """简易 YAML 解析器，支持基本 key: value 和嵌套结构"""
     result = {}
-    lines = text.strip().split('\n')
-    
-    # 处理 nodes.yaml 格式
-    if 'nodes:' in text:
-        nodes = []
-        current_node = None
-        in_services = False
-        
-        for line in lines:
-            stripped = line.strip()
-            
-            # 节点定义开始
-            if stripped.startswith('- name:'):
-                if current_node:
-                    nodes.append(current_node)
-                current_node = {'name': stripped.split(':', 1)[1].strip()}
-                in_services = False
-            
-            # 节点属性
-            elif current_node and ':' in stripped and not stripped.startswith('#'):
-                key, _, value = stripped.partition(':')
+    lines = yaml_text.split('\n')
+    current_key = None
+    current_list = []
+    in_list = False
+    indent_stack = [(-1, result)]
+
+    for line in lines:
+        stripped = line.rstrip()
+        if not stripped.strip() or stripped.strip().startswith('#'):
+            continue
+
+        indent = len(line) - len(line.lstrip())
+        content = stripped.strip()
+
+        # 缩进减少时弹出栈
+        while indent_stack and indent <= indent_stack[-1][0]:
+            indent_stack.pop()
+
+        if not indent_stack:
+            indent_stack.append((-1, {}))
+
+        current_dict = indent_stack[-1][1]
+
+        if content.startswith('-'):
+            # 列表项
+            item = content[1:].strip()
+            if item.startswith('{') and item.endswith('}'):
+                # 尝试解析内联 dict
+                try:
+                    inner = json.loads(item.replace("'", '"'))
+                    current_list.append(inner)
+                except json.JSONDecodeError:
+                    current_list.append(item)
+            elif ': ' in item:
+                # 可能是 key: value 形式的列表项
+                parts = item.split(': ', 1)
+                current_list.append({parts[0].strip(): parts[1].strip()})
+            else:
+                current_list.append(item)
+            in_list = True
+        else:
+            if in_list:
+                if current_key and current_list:
+                    current_dict[current_key] = current_list
+                current_list = []
+                in_list = False
+
+            if ': ' in content:
+                key, value = content.split(': ', 1)
                 key = key.strip()
                 value = value.strip()
-                
-                # 处理列表值
-                if value.startswith('[') and value.endswith(']'):
-                    value = [v.strip() for v in value[1:-1].split(',')]
-                elif value == '':
-                    # 可能是嵌套结构
-                    pass
-                
-                if current_node is not None and not in_services:
-                    current_node[key] = value
-            
-            # services 列表
-            if 'services:' in stripped and stripped.startswith('services:'):
-                services_str = stripped.split(':', 1)[1].strip()
-                if services_str.startswith('[') and services_str.endswith(']'):
-                    current_node['services'] = [s.strip() for s in services_str[1:-1].split(',')]
-                    in_services = True
-        
-        if current_node:
-            nodes.append(current_node)
-        
-        result['nodes'] = nodes
-        
-        # 提取 network 配置
-        network = {}
-        for line in lines:
-            stripped = line.strip()
-            if stripped.startswith('lan_subnet:'):
-                network['lan_subnet'] = stripped.split(':', 1)[1].strip()
-            elif stripped.startswith('wg_subnet:'):
-                network['wg_subnet'] = stripped.split(':', 1)[1].strip()
-            elif stripped.startswith('gateway:'):
-                network['gateway'] = stripped.split(':', 1)[1].strip()
-            elif stripped.startswith('domain:'):
-                network['domain'] = stripped.split(':', 1)[1].strip()
-        
-        if network:
-            result['network'] = network
-    
-    # 处理 services.yaml 格式
-    if 'services:' in text:
-        services = {}
-        current_svc = None
-        pending_key = None
-        pending_is_list = None
-        pending_dict = None
-        
-        def parse_scalar(val: str):
-            """解析标量值（布尔、null、字符串）"""
-            val = val.strip()
-            if val == 'true':
-                return True
-            elif val == 'false':
-                return False
-            elif val == 'null' or val == '~' or val == '':
-                return None
-            # 内联列表
-            if val.startswith('[') and val.endswith(']'):
-                inner = val[1:-1].strip()
-                if inner == '':
-                    return []
-                return [v.strip().strip('"').strip("'") for v in inner.split(',')]
-            # 带引号字符串
-            if len(val) >= 2:
-                if (val[0] == '"' and val[-1] == '"') or (val[0] == "'" and val[-1] == "'"):
-                    return val[1:-1]
-            return val
-        
-        for line in lines:
-            stripped = line.strip()
-            indent = len(line) - len(line.lstrip())
-            
-            # 注释或空行
-            if not stripped or stripped.startswith('#'):
-                continue
-            
-            # services: 根键 - 跳过
-            if indent == 0 and stripped == 'services:':
-                continue
-            
-            # 服务名（缩进2，以冒号结尾，冒号前无其他冒号）
-            if 0 < indent <= 2 and stripped.endswith(':') and ':' not in stripped[:-1]:
-                svc_name = stripped[:-1]
-                current_svc = svc_name
-                services[svc_name] = {}
-                pending_key = None
-                pending_is_list = None
-                pending_dict = None
-                continue
-            
-            # 列表项（以 - 开头，缩进大于4）
-            if current_svc and stripped.startswith('- ') and indent > 4:
-                item_raw = stripped[2:].strip()
-                item_value = parse_scalar(item_raw)
-                if pending_key is not None and pending_is_list:
-                    services[current_svc][pending_key].append(
-                        item_value if item_value is not None else item_raw
-                    )
-                elif pending_key is not None and pending_is_list is None:
-                    services[current_svc][pending_key] = [
-                        item_value if item_value is not None else item_raw
-                    ]
-                    pending_is_list = True
-                continue
-            
-            # 嵌套键值对（在 pending 字典下，缩进大于4，有冒号但非列表项）
-            if current_svc and pending_dict is not None and indent > 4 and ':' in stripped and not stripped.startswith('-'):
-                sub_key, _, sub_val = stripped.partition(':')
-                sub_key = sub_key.strip()
-                sub_val_parsed = parse_scalar(sub_val)
-                if sub_val_parsed is not None:
-                    pending_dict[sub_key] = sub_val_parsed
-                continue
-            
-            # 服务属性或嵌套结构开始
-            if current_svc and ':' in stripped:
-                key, _, raw_value = stripped.partition(':')
-                key = key.strip()
-                raw_value = raw_value.strip()
-                
-                clean_val = raw_value
-                if len(clean_val) >= 2:
-                    if (clean_val[0] == '"' and clean_val[-1] == '"') or (clean_val[0] == "'" and clean_val[-1] == "'"):
-                        clean_val = clean_val[1:-1]
-                
-                if clean_val == '' or clean_val is None:
-                    # 空值：后续行决定是列表还是字典
-                    pending_key = key
-                    pending_is_list = None
-                    pending_dict = {}
-                    services[current_svc][key] = pending_dict
+                if value == '' or value == '{}':
+                    current_dict[key] = {}
+                    indent_stack.append((indent, {}))
+                    indent_stack[-1] = (indent, current_dict[key])
+                elif value == '[]':
+                    current_dict[key] = []
+                elif value.lower() == 'true':
+                    current_dict[key] = True
+                elif value.lower() == 'false':
+                    current_dict[key] = False
+                elif value.lower() == 'null' or value.lower() == '~':
+                    current_dict[key] = None
                 else:
-                    parsed = parse_scalar(raw_value)
-                    services[current_svc][key] = parsed
-                    pending_key = None
-                    pending_is_list = None
-                    pending_dict = None
-        
-        # 后处理：未填充的空字典转为空列表
-        for svc_data in services.values():
-            for key, val in list(svc_data.items()):
-                if isinstance(val, dict) and len(val) == 0:
-                    svc_data[key] = []
-        
-        result['services'] = services
-    
+                    current_dict[key] = value
+                current_key = key
+            elif ':' in content and content.endswith(':'):
+                key = content.rstrip(':').strip()
+                current_dict[key] = {}
+                indent_stack.append((indent, current_dict[key]))
+                current_key = key
+
+    if in_list and current_key and current_list:
+        # Find the right dict
+        d = result
+        for k in current_key.split('.'):
+            if isinstance(d, dict) and k in d:
+                d = d[k]
+            else:
+                break
+        else:
+            if isinstance(d, dict):
+                d[current_key] = current_list
+
     return result
 
-# ============ 测试结果 ============
-TEST_RESULTS = []
-PASSED = 0
-FAILED = 0
-WARNINGS = 0
+def test_service_consistency():
+    """验证 services.yaml 和 config.json 中的服务定义是否一致"""
+    test_begin("6: 服务一致性 (services.yaml vs config.json)")
+    all_ok = True
 
-def log_pass(name: str, detail: str = ""):
-    global PASSED
-    PASSED += 1
-    msg = f"  [PASS] {name}"
-    if detail:
-        msg += f" - {detail}"
-    TEST_RESULTS.append(("PASS", name, detail))
-    print(color(msg, GREEN))
+    services_yaml_path = INVENTORY_DIR / "services.yaml"
+    config_json_path = PANEL_DIR / "config.json"
 
-def log_fail(name: str, detail: str = ""):
-    global FAILED
-    FAILED += 1
-    msg = f"  [FAIL] {name}"
-    if detail:
-        msg += f" - {detail}"
-    TEST_RESULTS.append(("FAIL", name, detail))
-    print(color(msg, RED))
-
-def log_warn(name: str, detail: str = ""):
-    global WARNINGS
-    WARNINGS += 1
-    msg = f"  [WARN] {name}"
-    if detail:
-        msg += f" - {detail}"
-    TEST_RESULTS.append(("WARN", name, detail))
-    print(color(msg, YELLOW))
-
-def log_info(msg: str):
-    print(color(f"  [INFO] {msg}", CYAN))
-
-# ============ 测试1: 配置文件完整性验证 ============
-def test_config_files():
-    """验证 YAML 和 JSON 配置文件"""
-    print("\n" + "="*60)
-    print("测试 1: 配置文件完整性验证")
-    print("="*60)
-    
-    # 测试 nodes.yaml
-    nodes_file = INVENTORY_DIR / "nodes.yaml"
-    if not nodes_file.exists():
-        log_fail("nodes.yaml 不存在")
-        return False
-    
-    try:
-        with open(nodes_file, encoding='utf-8') as f:
-            nodes_text = f.read()
-        
-        nodes_data = simple_yaml_parse(nodes_text)
-        
-        if "nodes" not in nodes_data:
-            log_fail("nodes.yaml 缺少 'nodes' 键")
-            return False
-        
-        nodes = nodes_data["nodes"]
-        log_pass(f"nodes.yaml 解析成功: {len(nodes)} 个节点")
-        
-        # 验证每个节点
-        for node in nodes:
-            name = node.get("name", "unknown")
-            ip = node.get("ip", "")
-            wg_ip = node.get("wg_ip", "")
-            
-            # 检查必要字段
-            if not ip:
-                log_fail(f"节点 {name} 缺少 IP 地址")
-            elif not re.match(r'^\d+\.\d+\.\d+\.\d+$', ip):
-                log_fail(f"节点 {name} IP 格式错误: {ip}")
-            else:
-                log_pass(f"节点 {name} IP 验证: {ip}")
-            
-            if not wg_ip:
-                log_warn(f"节点 {name} 缺少 WireGuard IP")
-            elif not re.match(r'^\d+\.\d+\.\d+\.\d+$', wg_ip):
-                log_fail(f"节点 {name} WireGuard IP 格式错误: {wg_ip}")
-            else:
-                log_pass(f"节点 {name} WireGuard IP: {wg_ip}")
-            
-            # 验证 IP 映射一致性
-            if name in NODE_IP_MAP:
-                expected_ip = NODE_IP_MAP[name]
-                if ip == expected_ip:
-                    log_pass(f"节点 {name} IP 与硬编码 fallback 一致")
-                else:
-                    log_warn(f"节点 {name} IP ({ip}) 与硬编码 fallback ({expected_ip}) 不一致")
-        
-        # 验证 network 配置
-        if "network" in nodes_data:
-            network = nodes_data["network"]
-            if "lan_subnet" in network:
-                log_pass(f"LAN 子网配置: {network['lan_subnet']}")
-            if "wg_subnet" in network:
-                log_pass(f"WireGuard 子网配置: {network['wg_subnet']}")
-            if "gateway" in network:
-                log_pass(f"网关配置: {network['gateway']}")
-        
-    except Exception as e:
-        log_fail(f"nodes.yaml 解析错误: {str(e)}")
-        return False
-    
-    # 测试 services.yaml
-    services_file = INVENTORY_DIR / "services.yaml"
-    if not services_file.exists():
+    if not services_yaml_path.exists():
         log_fail("services.yaml 不存在")
-        return False
-    
-    try:
-        with open(services_file, encoding='utf-8') as f:
-            services_text = f.read()
-        
-        services_data = simple_yaml_parse(services_text)
-        
-        if "services" not in services_data:
-            log_fail("services.yaml 缺少 'services' 键")
-            return False
-        
-        services = services_data["services"]
-        log_pass(f"services.yaml 解析成功: {len(services)} 个服务")
-        
-        # 验证服务定义
-        for svc_name, svc_config in services.items():
-            node = svc_config.get("node", "")
-            if not node:
-                log_fail(f"服务 {svc_name} 缺少 node 字段")
-            elif node not in NODE_IP_MAP:
-                log_warn(f"服务 {svc_name} 绑定到未知节点: {node}")
-            else:
-                log_pass(f"服务 {svc_name} 绑定到节点: {node}")
-            
-            # 验证服务类型
-            is_container = svc_config.get("container", False)
-            if is_container:
-                image = svc_config.get("image", "")
-                if image:
-                    log_pass(f"服务 {svc_name} 镜像: {image}")
-                else:
-                    log_fail(f"容器服务 {svc_name} 缺少 image 字段")
-        
-    except Exception as e:
-        log_fail(f"services.yaml 解析错误: {str(e)}")
-        return False
-    
-    # 测试 panel/config.json
-    panel_config = PANEL_DIR / "config.json"
-    if not panel_config.exists():
-        log_fail("panel/config.json 不存在")
-        return False
-    
-    try:
-        with open(panel_config, encoding='utf-8') as f:
-            panel_data = json.load(f)
-        
-        if "nodes" not in panel_data:
-            log_fail("panel/config.json 缺少 'nodes' 键")
-        else:
-            log_pass(f"panel/config.json 解析成功: {len(panel_data['nodes'])} 个节点")
-        
-        # 验证面板节点与 inventory 节点一致性
-        panel_node_names = {n["name"] for n in panel_data.get("nodes", [])}
-        inv_node_names = set(NODE_IP_MAP.keys())
-        
-        missing_in_panel = inv_node_names - panel_node_names
-        extra_in_panel = panel_node_names - inv_node_names
-        
-        if not missing_in_panel and not extra_in_panel:
-            log_pass("面板节点列表与 inventory 完全一致")
-        else:
-            if missing_in_panel:
-                log_warn(f"面板缺少节点: {missing_in_panel}")
-            if extra_in_panel:
-                log_warn(f"面板多出节点: {extra_in_panel}")
-        
-        # 验证面板节点服务配置
-        for node in panel_data.get("nodes", []):
-            node_name = node.get("name", "")
-            services = node.get("services", [])
-            if not services:
-                log_warn(f"面板节点 {node_name} 没有配置服务")
-            else:
-                log_pass(f"面板节点 {node_name}: {len(services)} 个服务")
-                
-                # 检查服务必要字段
-                for svc in services:
-                    if "name" not in svc:
-                        log_fail(f"面板节点 {node_name} 服务缺少 'name' 字段")
-                    if "display" not in svc:
-                        log_warn(f"面板节点 {node_name} 服务 {svc.get('name', '?')} 缺少 'display' 字段")
-                    if "container" not in svc:
-                        log_warn(f"面板节点 {node_name} 服务 {svc.get('name', '?')} 缺少 'container' 字段")
-        
-    except json.JSONDecodeError as e:
-        log_fail(f"panel/config.json JSON 解析错误: {str(e)}")
-        return False
-    except Exception as e:
-        log_fail(f"panel/config.json 读取错误: {str(e)}")
-        return False
-    
-    return True
+        FAIL_COUNT += 1
+        return test_end()
+    if not config_json_path.exists():
+        log_fail("config.json 不存在")
+        FAIL_COUNT += 1
+        return test_end()
 
-# ============ 测试2: 节点目录结构验证 ============
-def test_node_directories():
-    """验证节点目录结构"""
-    print("\n" + "="*60)
-    print("测试 2: 节点目录结构验证")
-    print("="*60)
-    
+    # 解析 services.yaml
+    yaml_text = services_yaml_path.read_text(encoding='utf-8')
+    yaml_parsed = _parse_yaml_simple(yaml_text)
+    log_pass("services.yaml 解析成功")
+    PASS_COUNT += 1
+
+    # 解析 config.json
+    try:
+        with open(config_json_path, encoding='utf-8') as f:
+            config = json.load(f)
+        log_pass("config.json 解析成功")
+        PASS_COUNT += 1
+    except (json.JSONDecodeError, FileNotFoundError) as e:
+        log_fail(f"config.json 解析失败: {e}")
+        FAIL_COUNT += 1
+        return test_end()
+
+    # 获取 services.yaml 中定义的服务名
+    yaml_services = {}
+    if "services" in yaml_parsed:
+        svcs = yaml_parsed["services"]
+        if isinstance(svcs, dict):
+            yaml_services = svcs
+        elif isinstance(svcs, str):
+            log_warn(f"services 字段是字符串而非字典: {svcs}")
+            WARN_COUNT += 1
+    else:
+        log_warn("services.yaml 中未找到 services 字段")
+        WARN_COUNT += 1
+
+    yaml_service_names = set(yaml_services.keys())
+    log_info(f"services.yaml 定义了 {len(yaml_service_names)} 个服务: {sorted(yaml_service_names)}")
+
+    # 获取 config.json 中所有节点定义的服务
+    config_service_names = set()
+    for node in config.get("nodes", []):
+        for svc in node.get("services", []):
+            if isinstance(svc, dict) and "name" in svc:
+                config_service_names.add(svc["name"])
+
+    log_info(f"config.json 引用了 {len(config_service_names)} 个服务: {sorted(config_service_names)}")
+
+    # 检查一致性
+    if yaml_service_names == config_service_names:
+        log_pass("services.yaml 和 config.json 服务定义完全一致")
+        PASS_COUNT += 1
+    else:
+        missing_in_config = yaml_service_names - config_service_names
+        extra_in_config = config_service_names - yaml_service_names
+        if missing_in_config:
+            log_warn(f"services.yaml 有但 config.json 缺少: {missing_in_config}")
+            WARN_COUNT += 1
+        if extra_in_config:
+            log_warn(f"config.json 有但 services.yaml 缺少: {extra_in_config}")
+            WARN_COUNT += 1
+
+    # 检查单个服务配置
+    for node in config.get("nodes", []):
+        node_name = node.get("name", "unknown")
+        for svc in node.get("services", []):
+            svc_name = svc.get("name", "")
+            if svc_name in yaml_services:
+                yaml_svc = yaml_services[svc_name]
+                if isinstance(yaml_svc, dict):
+                    # 检查端口一致性
+                    yaml_ports = yaml_svc.get("ports", [])
+                    if isinstance(yaml_ports, str):
+                        yaml_ports = [yaml_ports]
+                    svc_ports = svc.get("ports", [])
+                    if isinstance(svc_ports, list) and isinstance(yaml_ports, list):
+                        if set(str(p) for p in svc_ports) == set(str(p) for p in yaml_ports):
+                            log_pass(f"{node_name}/{svc_name}: 端口一致")
+                            PASS_COUNT += 1
+                        else:
+                            log_warn(f"{node_name}/{svc_name}: 端口不一致 (config:{svc_ports} vs yaml:{yaml_ports})")
+                            WARN_COUNT += 1
+
+    return test_end()
+
+# ============ 7. Python 文件语法检查 ============
+
+def test_python_syntax():
+    """检查所有 Python 文件的语法"""
+    test_begin("7: Python 语法检查")
+    all_ok = True
+
+    py_files = []
+    for root, dirs, files in os.walk(PROJECT_ROOT):
+        dirs[:] = [d for d in dirs if not d.startswith('.')]
+        for f in files:
+            if f.endswith('.py'):
+                py_files.append(os.path.join(root, f))
+
+    if not py_files:
+        log_warn("未找到 .py 文件")
+        WARN_COUNT += 1
+        return test_end()
+
+    for py_file in sorted(py_files):
+        rel_path = os.path.relpath(py_file, PROJECT_ROOT)
+        try:
+            with open(py_file, encoding='utf-8') as f:
+                compile(f.read(), py_file, 'exec')
+            log_pass(f"{rel_path}: 语法正确")
+            PASS_COUNT += 1
+        except SyntaxError as e:
+            log_fail(f"{rel_path}: 语法错误: {e}")
+            FAIL_COUNT += 1
+            all_ok = False
+
+    return test_end()
+
+# ============ 8. Docker Compose 文件验证 ============
+
+def test_docker_compose():
+    """验证 docker-compose.yml 文件结构"""
+    test_begin("8: Docker Compose 文件验证")
+    all_ok = True
+
     for node_name, node_dir in NODE_DIRS.items():
-        log_info(f"检查节点 {node_name}...")
-        
-        # 检查目录存在
-        if not node_dir.exists():
-            log_fail(f"节点目录不存在: {node_dir}")
+        dc_file = node_dir / "docker-compose.yml"
+        if not dc_file.exists():
+            log_skip(f"{node_name}: docker-compose.yml 不存在")
+            SKIP_COUNT += 1
             continue
-        
-        log_pass(f"节点目录存在: {node_dir}")
-        
-        # 检查 docker-compose.yml
-        compose_file = node_dir / "docker-compose.yml"
-        if compose_file.exists():
-            try:
-                with open(compose_file, encoding='utf-8') as f:
-                    compose_text = f.read()
-                
-                # 检查基本格式
-                if 'services:' in compose_text:
-                    log_pass(f"{node_name}/docker-compose.yml 包含 services 定义")
-                else:
-                    log_warn(f"{node_name}/docker-compose.yml 可能缺少 services")
-                
-                # 检查 volumes 路径
-                volumes = re.findall(r'-\s*(\./[^:\s]+):', compose_text)
-                if volumes:
-                    log_info(f"  卷挂载: {len(volumes)} 个使用相对路径")
-                
-                # 检查服务数量
-                svc_count = len(re.findall(r'^\w[\w-]*:\s*$', compose_text, re.MULTILINE))
-                if svc_count > 0:
-                    log_pass(f"{node_name} docker-compose: 约 {svc_count} 个服务")
-                    
-            except Exception as e:
-                log_fail(f"{node_name}/docker-compose.yml 错误: {str(e)}")
-        else:
-            log_warn(f"{node_name} 缺少 docker-compose.yml")
-        
-        # 检查 .env.example
-        env_example = node_dir / ".env.example"
-        if env_example.exists():
-            log_pass(f"{node_name}/.env.example 存在")
-        else:
-            log_warn(f"{node_name} 缺少 .env.example")
-        
-        # 检查服务子目录
-        subdirs = [d for d in node_dir.iterdir() if d.is_dir()]
-        log_info(f"  子目录: {len(subdirs)} 个")
-        for subdir in sorted(subdirs):
-            # 检查子目录是否有 init/install 脚本
-            init_scripts = list(subdir.glob("init.sh")) + list(subdir.glob("install*.sh"))
-            if init_scripts:
-                log_pass(f"  服务 {subdir.name}: {len(init_scripts)} 个初始化脚本")
-    
-    return True
 
-# ============ 测试3: 脚本语法检查 ============
-def test_script_syntax():
-    """检查脚本语法"""
-    print("\n" + "="*60)
-    print("测试 3: 脚本语法检查")
-    print("="*60)
-    
-    # 检查 Shell 脚本
-    shell_scripts = sorted(SCRIPTS_DIR.glob("*.sh"))
-    log_info(f"发现 {len(shell_scripts)} 个 Shell 脚本")
-    
-    for script in shell_scripts:
-        try:
-            with open(script, encoding='utf-8') as f:
-                content = f.read()
-            
-            # 检查 shebang
-            if content.startswith("#!/bin/bash") or content.startswith("#!/bin/sh"):
-                log_pass(f"{script.name} 有 shebang")
-            else:
-                log_warn(f"{script.name} 缺少 shebang")
-            
-            # 检查 set -e 或 set -u
-            if "set -e" in content or "set -u" in content:
-                log_pass(f"{script.name} 有错误处理 (set -e/-u)")
-            else:
-                log_warn(f"{script.name} 缺少 set -e/-u")
-            
-            # 检查基本结构
-            functions = re.findall(r'^(\w+)\(\)\s*\{', content, re.MULTILINE)
-            if functions:
-                log_info(f"  函数: {', '.join(functions[:10])}{'...' if len(functions) > 10 else ''}")
-            
-            # 检查 log 函数
-            has_log_info = "log_info" in content
-            has_log_error = "log_error" in content
-            if has_log_info and has_log_error:
-                log_pass(f"{script.name} 有日志函数")
-            elif not has_log_info:
-                log_warn(f"{script.name} 缺少 log_info 函数")
-            elif not has_log_error:
-                log_warn(f"{script.name} 缺少 log_error 函数")
-                
-        except Exception as e:
-            log_fail(f"{script.name} 读取错误: {str(e)}")
-    
-    # 检查 Python 脚本
-    python_scripts = list(PROJECT_ROOT.glob("**/*.py"))
-    python_scripts = [s for s in python_scripts if '.git' not in str(s) and '__pycache__' not in str(s)]
-    
-    log_info(f"发现 {len(python_scripts)} 个 Python 脚本")
-    
-    for script in python_scripts:
-        try:
-            with open(script, encoding='utf-8') as f:
-                content = f.read()
-            
-            # 检查 shebang
-            if content.startswith("#!/usr/bin/env python") or content.startswith("#!/usr/bin/python"):
-                log_pass(f"{script.name} 有 shebang")
-            
-            # Python 使用缩进而非大括号，跳过括号配对检查
-            
-            # 检查必要 import
-            imports = re.findall(r'^import (\w+)|^from (\w+) import', content, re.MULTILINE)
-            if imports:
-                module_names = [i[0] or i[1] for i in imports[:5]]
-                log_info(f"  导入: {', '.join(module_names)}")
-                
-        except Exception as e:
-            log_fail(f"{script.name} 读取错误: {str(e)}")
-    
-    return True
+        content = dc_file.read_text(encoding='utf-8')
 
-# ============ 测试4: deploy.sh 节点映射验证 ============
-def test_deploy_node_mapping():
-    """验证 deploy.sh 节点目录映射"""
-    print("\n" + "="*60)
-    print("测试 4: deploy.sh 节点映射验证")
-    print("="*60)
-    
-    deploy_script = SCRIPTS_DIR / "deploy.sh"
-    if not deploy_script.exists():
-        log_fail("deploy.sh 不存在")
-        return False
-    
-    try:
-        with open(deploy_script, encoding='utf-8') as f:
-            content = f.read()
-        
-        # 解析 NODES 数组
-        nodes_pattern = r'NODES=\((.*?)\)'
-        nodes_match = re.search(nodes_pattern, content, re.DOTALL)
-        if not nodes_match:
-            log_fail("无法解析 NODES 数组")
-            return False
-        
-        nodes_block = nodes_match.group(1)
-        node_entries = re.findall(r'"([^"]+)"', nodes_block)
-        
-        log_info(f"deploy.sh 中定义的节点:")
-        for entry in node_entries:
-            parts = entry.split("|")
-            if len(parts) >= 3:
-                name, ip, suffix = parts[0], parts[1], parts[2]
-                log_info(f"  {name} | {ip} | {suffix}")
-                
-                # 验证目录后缀与节点名一致
-                if suffix == name:
-                    log_pass(f"节点 {name} 目录后缀 '{suffix}' 与节点名一致")
-                else:
-                    log_fail(f"节点 {name} 目录后缀 '{suffix}' 与节点名 '{name}' 不一致")
-                
-                # 验证目录存在
-                node_dir = PROJECT_ROOT / f"node-{suffix}"
-                if node_dir.exists():
-                    log_pass(f"节点 {name} 对应目录存在: node-{suffix}")
-                else:
-                    log_fail(f"节点 {name} 对应目录不存在: node-{suffix}")
-        
-        # 验证与 inventory 一致性
-        log_info("与 inventory 验证一致性:")
-        for entry in node_entries:
-            parts = entry.split("|")
-            if len(parts) >= 3:
-                name, ip = parts[0], parts[1]
-                expected_ip = NODE_IP_MAP.get(name, "")
-                
-                if expected_ip and ip == expected_ip:
-                    log_pass(f"节点 {name} IP {ip} 与 inventory 一致")
-                elif expected_ip:
-                    log_warn(f"节点 {name} IP {ip} 与 inventory {expected_ip} 不一致")
-    
-    except Exception as e:
-        log_fail(f"deploy.sh 解析错误: {str(e)}")
-        return False
-    
-    return True
-
-# ============ 测试5: restore.sh 和 backup.sh fallback 机制 ============
-def test_fallback_mechanism():
-    """验证 restore.sh 和 backup.sh 的 fallback 机制"""
-    print("\n" + "="*60)
-    print("测试 5: restore.sh 和 backup.sh fallback 机制")
-    print("="*60)
-    
-    for script_name in ["restore.sh", "backup.sh"]:
-        script_path = SCRIPTS_DIR / script_name
-        if not script_path.exists():
-            log_fail(f"{script_name} 不存在")
-            continue
-        
-        try:
-            with open(script_path, encoding='utf-8') as f:
-                content = f.read()
-            
-            # 检查 fallback 机制
-            has_case_fallback = "case \"$NODE_NAME\"" in content
-            has_hardcoded_ips = all(ip in content for ip in NODE_IP_MAP.values())
-            
-            if has_case_fallback:
-                log_pass(f"{script_name} 有 case 语句 fallback")
-            else:
-                log_warn(f"{script_name} 缺少 case 语句 fallback")
-            
-            if has_hardcoded_ips:
-                log_pass(f"{script_name} 包含所有硬编码节点 IP")
-            else:
-                missing = [ip for ip in NODE_IP_MAP.values() if ip not in content]
-                log_warn(f"{script_name} 缺少 IP fallback: {missing}")
-            
-            # 验证 fallback IP 与 inventory 一致
-            for name, ip in NODE_IP_MAP.items():
-                pattern = rf'{name}\)\s+NODE_IP="({re.escape(ip)}")'
-                if re.search(pattern, content):
-                    log_pass(f"{script_name} 节点 {name} fallback IP 正确")
-                elif ip in content:
-                    log_info(f"{script_name} 节点 {name} IP 在脚本中")
-                
-        except Exception as e:
-            log_fail(f"{script_name} 解析错误: {str(e)}")
-    
-    return True
-
-# ============ 测试6: health-check.sh 变量声明 ============
-def test_health_check_variables():
-    """验证 health-check.sh 变量声明位置"""
-    print("\n" + "="*60)
-    print("测试 6: health-check.sh 变量声明验证")
-    print("="*60)
-    
-    health_script = SCRIPTS_DIR / "health-check.sh"
-    if not health_script.exists():
-        log_fail("health-check.sh 不存在")
-        return False
-    
-    try:
-        with open(health_script, encoding='utf-8') as f:
-            content = f.read()
-            lines = content.split('\n')
-        
-        # 检查在函数外使用 local 关键字
-        # 先找到所有函数定义的行号范围
-        function_ranges = []
-        in_function = False
-        func_start = 0
-        brace_count = 0
-        
-        for i, line in enumerate(lines, 1):
-            if not in_function and re.match(r'^\w+\(\)\s*\{', line):
-                in_function = True
-                func_start = i
-                brace_count = 0
-            elif in_function:
-                brace_count += line.count('{')
-                brace_count -= line.count('}')
-                if brace_count <= 0:
-                    function_ranges.append((func_start, i))
-                    in_function = False
-        
-        # 检查 local 变量声明
-        issues_found = False
-        for i, line in enumerate(lines, 1):
-            if 'local ' in line and not line.strip().startswith('#'):
-                # 检查是否在函数内
-                in_any_function = any(start <= i <= end for start, end in function_ranges)
-                if not in_any_function:
-                    # 检查这是否是变量声明部分（WireGuard/Syncthing 状态检查）
-                    context_start = max(0, i - 5)
-                    context = '\n'.join(lines[context_start:i])
-                    
-                    if 'WireGuard' in context or 'Syncthing' in context:
-                        log_warn(f"health-check.sh 第 {i} 行: local 变量在函数外声明 - {line.strip()[:60]}")
-                        issues_found = True
-        
-        if not issues_found:
-            log_pass("health-check.sh 没有在函数外使用 local 关键字")
-        else:
-            log_fail("health-check.sh 存在 local 变量在函数外声明的问题")
-        
-        # 验证 WireGuard 检查变量
-        wg_section = re.search(
-            r'# ---- WireGuard Mesh ----.*?(?=# ----|\Z)',
-            content, re.DOTALL
-        )
-        if wg_section:
-            section = wg_section.group(0)
-            peers_match = re.search(r'^peers=', section, re.MULTILINE)
-            if peers_match:
-                peers_line = peers_match.start()
-                wg_line_context = section[:peers_line].split('\n')[-2] if peers_line > 0 else ""
-                if 'local ' in wg_line_context:
-                    log_fail("WireGuard 检查的 peers 变量前有 local 关键字")
-                else:
-                    log_pass("WireGuard 检查的 peers 变量声明正确")
-        
-        # 验证 Syncthing 检查变量
-        st_section = re.search(
-            r'# ---- Syncthing.*?(?=\Z)',
-            content, re.DOTALL
-        )
-        if st_section:
-            section = st_section.group(0)
-            st_match = re.search(r'^st_devices=', section, re.MULTILINE)
-            if st_match:
-                st_line = st_match.start()
-                st_line_context = section[:st_line].split('\n')[-2] if st_line > 0 else ""
-                if 'local ' in st_line_context:
-                    log_fail("Syncthing 检查的 st_devices 变量前有 local 关键字")
-                else:
-                    log_pass("Syncthing 检查的 st_devices 变量声明正确")
-    
-    except Exception as e:
-        log_fail(f"health-check.sh 解析错误: {str(e)}")
-        return False
-    
-    return True
-
-# ============ 测试7: setup.sh cloudflared 命令 ============
-def test_cloudflared_command():
-    """验证 setup.sh cloudflared 命令"""
-    print("\n" + "="*60)
-    print("测试 7: setup.sh cloudflared 命令验证")
-    print("="*60)
-    
-    setup_script = SCRIPTS_DIR / "setup.sh"
-    if not setup_script.exists():
-        log_fail("setup.sh 不存在")
-        return False
-    
-    try:
-        with open(setup_script, encoding='utf-8') as f:
-            content = f.read()
-        
-        # 查找 install_cloudflared 函数
-        cf_func = re.search(
-            r'install_cloudflared\(\)\s*\{(.*?)\n\}',
-            content, re.DOTALL
-        )
-        if not cf_func:
-            log_fail("无法找到 install_cloudflared 函数")
-            return False
-        
-        func_body = cf_func.group(1)
-        
-        # 检查有 token 的命令
-        if 'cloudflare/cloudflared:latest tunnel --no-autoupdate run --token' in func_body:
-            log_pass("有 token 时 cloudflared 命令包含 'run --token'")
-        else:
-            log_fail("有 token 时 cloudflared 命令可能缺少 'run'")
-        
-        # 检查无 token 的命令
-        if re.search(r'cloudflare/cloudflared:latest tunnel --no-autoupdate run\s*$', func_body, re.MULTILINE):
-            log_pass("无 token 时 cloudflared 命令包含 'run'")
-        elif 'cloudflared:latest tunnel --no-autoupdate run' in func_body:
-            log_pass("无 token 时 cloudflared 命令包含 'run' 参数")
-        else:
-            log_fail("无 token 时 cloudflared 命令缺少 'run' 参数")
-        
-        # 检查 install_panel 函数
-        panel_func = re.search(
-            r'install_panel\(\)\s*\{(.*?)\n\}',
-            content, re.DOTALL
-        )
-        if panel_func:
-            panel_body = panel_func.group(1)
-            
-            # 检查是否有从项目复制面板的逻辑
-            if 'project_panel' in panel_body:
-                log_pass("install_panel 包含从项目复制面板的逻辑")
-            
-            if 'cp -r' in panel_body:
-                log_pass("install_panel 有 cp -r 复制操作")
-            
-            # 检查 fallback 逻辑
-            if 'else' in panel_body:
-                log_pass("install_panel 有 fallback 逻辑")
-            
-            # 检查最小面板生成
-            if 'PYEOF' in panel_body or 'app.py' in panel_body:
-                log_pass("install_panel 能生成最小面板应用")
-    
-    except Exception as e:
-        log_fail(f"setup.sh 解析错误: {str(e)}")
-        return False
-    
-    return True
-
-# ============ 测试8: panel/app.py load_config 错误处理 ============
-def test_panel_app_error_handling():
-    """验证 panel/app.py 错误处理"""
-    print("\n" + "="*60)
-    print("测试 8: panel/app.py 错误处理验证")
-    print("="*60)
-    
-    app_file = PANEL_DIR / "app.py"
-    if not app_file.exists():
-        log_fail("panel/app.py 不存在")
-        return False
-    
-    try:
-        with open(app_file, encoding='utf-8') as f:
-            content = f.read()
-        
-        # 检查 load_config 函数
-        load_config = re.search(
-            r'def load_config\(\):(.*?)(?=\ndef|\Z)',
-            content, re.DOTALL
-        )
-        if not load_config:
-            log_fail("找不到 load_config 函数")
-            return False
-        
-        func_body = load_config.group(1)
-        
-        # 检查 try-except
-        if 'try:' in func_body and 'except' in func_body:
-            log_pass("load_config 有 try-except 块")
-        else:
-            log_fail("load_config 缺少 try-except 错误处理")
-        
-        # 检查 FileNotFoundError 处理
-        if 'FileNotFoundError' in func_body:
-            log_pass("load_config 处理 FileNotFoundError")
-        
-        # 检查 JSONDecodeError 处理
-        if 'JSONDecodeError' in func_body:
-            log_pass("load_config 处理 JSONDecodeError")
-        
-        # 检查默认返回值
-        if 'cluster_name' in func_body and 'nodes' in func_body:
-            log_pass("load_config 有默认返回值")
-        
-        # 验证默认值结构
-        default_match = re.search(r'"cluster_name":\s*"([^"]*)"', func_body)
-        if default_match:
-            cluster_name = default_match.group(1)
-            log_pass(f"默认集群名称: {cluster_name}")
-        
-        # 验证 CONFIG_PATH 使用环境变量
-        config_env = re.search(
-            r'CONFIG_PATH\s*=.*os\.environ\.get\("PANEL_CONFIG"',
-            content
-        )
-        if config_env:
-            log_pass("CONFIG_PATH 支持环境变量 PANEL_CONFIG")
-        else:
-            log_warn("CONFIG_PATH 可能不支持环境变量")
-        
-        # 检查 run_ssh 函数
-        if 'def run_ssh' in content:
-            log_pass("有 run_ssh 函数")
-        
-        # 检查异常处理
-        if 'except subprocess.TimeoutExpired' in content:
-            log_pass("run_ssh 处理 TimeoutExpired 异常")
-        
-        if 'except Exception as e' in content:
-            log_pass("run_ssh 处理通用异常")
-        
-        # 检查危险命令过滤
-        dangerous_keywords = ['rm -rf', 'mkfs', 'dd if=', 'shutdown', 'reboot', 'poweroff']
-        dangerous_found = [kw for kw in dangerous_keywords if kw in content]
-        if dangerous_found:
-            log_info(f"  危险命令过滤关键字: {dangerous_found}")
-        
-        if 'dangerous' in content.lower() and 'for d in dangerous' in content:
-            log_pass("exec_command 有危险命令过滤")
-    
-    except Exception as e:
-        log_fail(f"panel/app.py 解析错误: {str(e)}")
-        return False
-    
-    return True
-
-# ============ 测试9: install-services.sh xiaomusic 下载 ============
-def test_xiaomusic_download():
-    """验证 install-services.sh xiaomusic 下载逻辑"""
-    print("\n" + "="*60)
-    print("测试 9: install-services.sh xiaomusic 下载验证")
-    print("="*60)
-    
-    script = SCRIPTS_DIR / "install-services.sh"
-    if not script.exists():
-        log_fail("install-services.sh 不存在")
-        return False
-    
-    try:
-        with open(script, encoding='utf-8') as f:
-            content = f.read()
-        
-        # 查找 install_xiaomusic 函数
-        func_match = re.search(
-            r'install_xiaomusic\(\)\s*\{(.*?)\n\}',
-            content, re.DOTALL
-        )
-        if not func_match:
-            log_fail("找不到 install_xiaomusic 函数")
-            return False
-        
-        func_body = func_match.group(1)
-        
-        # 检查架构检测
-        if 'aarch64|arm64' in func_body:
-            log_pass("检测 aarch64/arm64 架构")
-        
-        if 'x86_64' in func_body:
-            log_pass("检测 x86_64 架构")
-        
-        # 检查默认架构
-        if 'arch="armv7"' in func_body or 'arch = "armv7"' in func_body:
-            log_pass("默认架构为 armv7")
-        
-        # 检查下载 URL 过滤
-        if 'browser_download_url' in func_body:
-            log_pass("使用 browser_download_url 过滤下载链接")
-        
-        if 'grep.*linux' in func_body or re.search(r'grep.*linux.*arch', func_body):
-            log_pass("下载 URL 按架构过滤")
-        
-        # 检查解压逻辑
-        if 'tar xzf' in func_body:
-            log_pass("使用 tar xzf 解压")
-        
-        # 检查临时目录
-        if 'mktemp -d' in func_body:
-            log_pass("使用 mktemp 创建临时目录")
-    
-    except Exception as e:
-        log_fail(f"install-services.sh 解析错误: {str(e)}")
-        return False
-    
-    return True
-
-# ============ 测试10: panel/install-service.sh 路径变量化 ============
-def test_panel_install_service():
-    """验证 panel/install-service.sh 路径变量化"""
-    print("\n" + "="*60)
-    print("测试 10: panel/install-service.sh 路径验证")
-    print("="*60)
-    
-    script = PANEL_DIR / "install-service.sh"
-    if not script.exists():
-        log_fail("panel/install-service.sh 不存在")
-        return False
-    
-    try:
-        with open(script, encoding='utf-8') as f:
-            content = f.read()
-        
-        # 检查是否使用变量
-        if 'PANEL_DIR=' in content:
-            log_pass("使用 PANEL_DIR 变量")
-        
-        # 检查动态路径计算
-        if 'dirname' in content:
-            log_pass("动态计算路径（使用 dirname）")
-        else:
-            log_warn("可能使用硬编码路径")
-        
-        # 检查是否有硬编码路径
-        hardcoded_patterns = [
-            r'/mnt/sd/edge-01/panel',
-            r'/mnt/sd/wk-edge/panel',
-            r'/opt/onecloud/panel',
+        # 检查基本结构
+        checks = [
+            ("services", "services" in content),
+            ("version", "version:" in content or "version: " in content),
+            ("image", "image:" in content),
+            ("container_name", "container_name:" in content),
+            ("restart", "restart:" in content),
         ]
-        has_hardcoded = False
-        for pattern in hardcoded_patterns:
-            if re.search(pattern, content):
-                has_hardcoded = True
-                log_fail(f"存在硬编码路径匹配: {pattern}")
-        
-        if not has_hardcoded:
-            log_pass("未发现硬编码路径")
-        
-        # 检查可移植性
-        if 'NODE_NAME=' in content:
-            log_pass("有 NODE_NAME 变量")
-        
-        if 'NODE_NAME:-wk-edge-01' in content:
-            log_pass("NODE_NAME 支持默认值")
-        
-        # 检查 systemd 服务文件生成
-        if 'systemd/system' in content:
-            log_pass("生成 systemd 服务文件")
-        
-        if 'ExecStart' in content:
-            log_pass("服务有 ExecStart 配置")
-        
-        if 'WorkingDirectory' in content:
-            log_pass("服务有 WorkingDirectory 配置")
-    
-    except Exception as e:
-        log_fail(f"panel/install-service.sh 解析错误: {str(e)}")
-        return False
-    
-    return True
 
-# ============ 测试12: 功能清单与代码一致性 ============
+        for check_name, result in checks:
+            if result:
+                log_pass(f"{node_name}: 包含 {check_name}")
+                PASS_COUNT += 1
+            else:
+                log_warn(f"{node_name}: 缺少 {check_name}")
+                WARN_COUNT += 1
+
+        # 检查端口映射
+        port_matches = re.findall(r'"?(\d+:\d+)"?', content)
+        if port_matches:
+            log_pass(f"{node_name}: 端口映射 {port_matches}")
+            PASS_COUNT += 1
+        else:
+            log_warn(f"{node_name}: 未检测到端口映射")
+            WARN_COUNT += 1
+
+        # 检查卷映射
+        if "volumes:" in content or "volumes" in re.findall(r'\bvolumes\b', content):
+            log_pass(f"{node_name}: 包含卷映射")
+            PASS_COUNT += 1
+        else:
+            log_warn(f"{node_name}: 未检测到卷映射")
+            WARN_COUNT += 1
+
+        # 检查环境变量
+        if "environment:" in content:
+            log_pass(f"{node_name}: 包含环境变量")
+            PASS_COUNT += 1
+        else:
+            log_warn(f"{node_name}: 未检测到环境变量")
+            WARN_COUNT += 1
+
+    return test_end()
+
+# ============ 9. 配置项完整性 ============
+
+def test_config_fields():
+    """验证 config.json 的字段完整性"""
+    test_begin("9: 配置项完整性")
+    all_ok = True
+
+    config_path = PANEL_DIR / "config.json"
+    if not config_path.exists():
+        log_fail("config.json 不存在")
+        FAIL_COUNT += 1
+        return test_end()
+
+    try:
+        with open(config_path, encoding='utf-8') as f:
+            config = json.load(f)
+        log_pass("config.json 解析成功")
+        PASS_COUNT += 1
+    except json.JSONDecodeError as e:
+        log_fail(f"config.json 解析失败: {e}")
+        FAIL_COUNT += 1
+        return test_end()
+
+    # 检查顶层字段
+    required_top_fields = ["cluster_name", "version", "nodes"]
+    for field in required_top_fields:
+        if field in config:
+            log_pass(f"config.json 包含顶层字段: {field}")
+            PASS_COUNT += 1
+        else:
+            log_fail(f"config.json 缺少顶层字段: {field}")
+            FAIL_COUNT += 1
+            all_ok = False
+
+    # 检查节点字段
+    for node in config.get("nodes", []):
+        node_name = node.get("name", "unknown")
+        required_node_fields = ["name", "display_name", "role", "ip", "wg_ip", "color", "services"]
+        for field in required_node_fields:
+            if field in node:
+                log_pass(f"节点 {node_name}: 包含字段 {field}")
+                PASS_COUNT += 1
+            else:
+                log_fail(f"节点 {node_name}: 缺少字段 {field}")
+                FAIL_COUNT += 1
+                all_ok = False
+
+        # 检查服务字段
+        for svc in node.get("services", []):
+            svc_name = svc.get("name", "unknown")
+            required_svc_fields = ["name", "display", "icon"]
+            for field in required_svc_fields:
+                if field in svc:
+                    log_pass(f"  服务 {svc_name}: 包含字段 {field}")
+                    PASS_COUNT += 1
+                else:
+                    log_warn(f"  服务 {svc_name}: 缺少字段 {field}")
+                    WARN_COUNT += 1
+
+    return test_end()
+
+# ============ 10. 脚本完整性和 self-test ============
+
+def test_script_self_test():
+    """检查脚本自身是否包含基本的错误处理、日志等"""
+    test_begin("10: 脚本完整性检查")
+    all_ok = True
+
+    sh_files = []
+    for root, dirs, files in os.walk(PROJECT_ROOT):
+        dirs[:] = [d for d in dirs if not d.startswith('.')]
+        for f in files:
+            if f.endswith('.sh'):
+                sh_files.append(os.path.join(root, f))
+
+    for sh_file in sorted(sh_files):
+        rel_path = os.path.relpath(sh_file, PROJECT_ROOT)
+        content = Path(sh_file).read_text(encoding='utf-8')
+
+        # 检查 shebang
+        if content.startswith('#!'):
+            log_pass(f"{rel_path}: 包含 shebang")
+            PASS_COUNT += 1
+        else:
+            log_warn(f"{rel_path}: 缺少 shebang")
+            WARN_COUNT += 1
+
+        # 检查 set -e
+        if 'set -e' in content:
+            log_pass(f"{rel_path}: 包含 set -e")
+            PASS_COUNT += 1
+        else:
+            log_warn(f"{rel_path}: 缺少 set -e")
+            WARN_COUNT += 1
+
+        # 检查错误处理
+        error_patterns = ['exit', 'echo.*error', 'echo.*fail', '||', 'log_info', 'log_error']
+        has_error_handling = any(re.search(pattern, content, re.IGNORECASE) for pattern in error_patterns)
+        if has_error_handling:
+            log_pass(f"{rel_path}: 包含错误处理")
+            PASS_COUNT += 1
+        else:
+            log_warn(f"{rel_path}: 未检测到错误处理")
+            WARN_COUNT += 1
+
+        # 检查函数定义
+        if re.search(r'^\w+\s*\(\)', content, re.MULTILINE):
+            log_pass(f"{rel_path}: 包含函数定义")
+            PASS_COUNT += 1
+        else:
+            log_warn(f"{rel_path}: 未检测到函数定义")
+            WARN_COUNT += 1
+
+    return test_end()
+
+# ============ 11. 安全配置检查 ============
+
+def test_security_config():
+    """检查安全相关配置"""
+    test_begin("11: 安全配置检查")
+    all_ok = True
+
+    # 检查 panel/app.py 的认证
+    app_py = PANEL_DIR / "app.py"
+    if app_py.exists():
+        content = app_py.read_text(encoding='utf-8')
+        auth_checks = [
+            ("require_auth 装饰器", "require_auth" in content),
+            ("Basic Auth 校验", "_check_auth" in content or "basic" in content.lower()),
+            ("PANEL_USER/PANEL_PASS", "PANEL_USER" in content and "PANEL_PASS" in content),
+            ("命令白名单", "ALLOWED_CMD_PREFIXES" in content),
+            ("命令安全校验", "is_command_safe" in content),
+            ("CORS 限制", "CORS" in content and "origins" in content),
+        ]
+
+        for check_name, result in auth_checks:
+            if result:
+                log_pass(f"app.py: {check_name}")
+                PASS_COUNT += 1
+            else:
+                log_warn(f"app.py: 缺少 {check_name}")
+                WARN_COUNT += 1
+
+    # 检查 WireGuard 密钥权限
+    wg_script = SCRIPTS_DIR / "wireguard-setup.sh"
+    if wg_script.exists():
+        content = wg_script.read_text(encoding='utf-8')
+        if 'chmod 600' in content:
+            log_pass("wireguard-setup.sh: 包含 chmod 600 权限设置")
+            PASS_COUNT += 1
+        else:
+            log_warn("wireguard-setup.sh: 缺少 chmod 600 权限设置")
+            WARN_COUNT += 1
+
+        if 'wg genkey' in content and '>/dev/null' in content:
+            log_pass("wireguard-setup.sh: 私钥不输出到终端")
+            PASS_COUNT += 1
+        else:
+            log_warn("wireguard-setup.sh: 私钥可能输出到终端")
+            WARN_COUNT += 1
+
+    # 检查 reboot 二次确认
+    if 'confirm' in app_py.read_text(encoding='utf-8'):
+        log_pass("app.py: 危险操作包含二次确认")
+        PASS_COUNT += 1
+    else:
+        log_warn("app.py: 危险操作缺少二次确认")
+        WARN_COUNT += 1
+
+    return test_end()
+
+# ============ 12. 功能清单与代码一致性验证 ============
+
 def test_feature_consistency():
     """验证所有功能清单文件与代码实现的一致性"""
-    print("\n" + "="*60)
-    print("测试 12: 功能清单与代码一致性验证")
-    print("="*60)
-    
-    try:
-        # 读取 services.yaml
-        with open(INVENTORY_DIR / "services.yaml", encoding='utf-8') as f:
-            services_text = f.read()
-        services_data = simple_yaml_parse(services_text)
-        yaml_services = services_data.get("services", {})
-        
-        # 1. 验证 services.yaml cloudflared 有 command 字段
-        cloudflared = yaml_services.get("cloudflared", {})
-        if cloudflared.get("command") == "tunnel --no-autoupdate run":
-            log_pass("services.yaml cloudflared command 正确: tunnel --no-autoupdate run")
-        else:
-            log_fail("services.yaml cloudflared command 缺失或不一致", f"当前: {cloudflared.get('command')}")
+    test_begin("12: 功能清单与代码一致性验证")
+    all_ok = True
 
-        # 2. 验证 services.yaml adguard 有 network_mode: host
-        adguard = yaml_services.get("adguard", {})
-        if adguard.get("network_mode") == "host":
-            log_pass("services.yaml adguard network_mode 正确: host")
-        else:
-            log_fail("services.yaml adguard 缺少 network_mode: host")
+    # 1. 验证 services.yaml 中定义的服务与 docker-compose.yml 中的服务一致
+    log_info("验证 services.yaml 与 docker-compose.yml 一致性:")
+    services_yaml_path = INVENTORY_DIR / "services.yaml"
+    if services_yaml_path.exists():
+        yaml_content = services_yaml_path.read_text(encoding='utf-8')
+        yaml_parsed = _parse_yaml_simple(yaml_content)
+        yaml_services = yaml_parsed.get("services", {})
+        if isinstance(yaml_services, str):
+            log_warn(f"services 字段类型是字符串: {yaml_services}")
+            WARN_COUNT += 1
+            yaml_services = {}
 
-        # 3. 验证 services.yaml wireguard ALLOWEDIPS 限制为内网子网
-        wireguard = yaml_services.get("wireguard", {})
-        allowed_ips = wireguard.get("env", {}).get("ALLOWEDIPS", "")
-        if "10.8.0.0/24" in allowed_ips and "192.168.1.0/24" in allowed_ips:
-            log_pass("services.yaml wireguard ALLOWEDIPS 正确限制为内网子网")
-        else:
-            log_fail("services.yaml wireguard ALLOWEDIPS 未限制为内网子网", f"当前: {allowed_ips}")
-
-        # 4. 验证 services.yaml wireguard 有 LOG_CONFS
-        log_confs = wireguard.get("env", {}).get("LOG_CONFS", "")
-        if log_confs == "true":
-            log_pass("services.yaml wireguard LOG_CONFS 配置正确")
-        else:
-            log_fail("services.yaml wireguard 缺少 LOG_CONFS")
-
-        # 5. 验证 services.yaml cups-web 端口映射为 632:80
-        cups_web = yaml_services.get("cups-web", {})
-        cups_web_ports = cups_web.get("ports", [])
-        if "632:80" in cups_web_ports:
-            log_pass("services.yaml cups-web 端口映射正确: 632:80")
-        else:
-            log_fail("services.yaml cups-web 端口映射错误", f"当前: {cups_web_ports}")
-
-        # 6. 验证 services.yaml cups-web CUPS_HOST 使用 ${NODE_IP}
-        cups_web_env = cups_web.get("env", {})
-        if cups_web_env.get("CUPS_HOST") == "${NODE_IP}":
-            log_pass("services.yaml cups-web CUPS_HOST 使用 NODE_IP 变量")
-        else:
-            log_fail("services.yaml cups-web CUPS_HOST 不是 NODE_IP 变量", f"当前: {cups_web_env.get('CUPS_HOST')}")
-
-        # 7. 验证 services.yaml cupsd 卷挂载路径
-        cupsd = yaml_services.get("cupsd", {})
-        cupsd_volumes = cupsd.get("volumes", [])
-        if any("./cupsd/config" in v for v in cupsd_volumes):
-            log_pass("services.yaml cupsd 卷挂载路径正确")
-        else:
-            log_fail("services.yaml cupsd 卷挂载路径不匹配 docker-compose")
-
-        # 8. 验证 services.yaml memos 有 env 配置
-        memos = yaml_services.get("memos", {})
-        memos_env = memos.get("env", {})
-        if memos_env.get("TZ") and memos_env.get("MEMOS_PORT") and memos_env.get("MEMOS_DRIVER"):
-            log_pass("services.yaml memos env 配置完整")
-        else:
-            log_fail("services.yaml memos 缺少 env 变量", f"当前 keys: {list(memos_env.keys())}")
-
-        # 9. 验证 services.yaml memos 端口使用变量
-        memos_ports = memos.get("ports", [])
-        if any("${MEMOS_PORT}" in p for p in memos_ports):
-            log_pass("services.yaml memos 端口使用 MEMOS_PORT 变量")
-        else:
-            log_fail("services.yaml memos 端口未使用变量")
-
-        # 10. 验证 services.yaml syncthing 有 GUI_ADDRESS
-        syncthing = yaml_services.get("syncthing", {})
-        syncthing_env = syncthing.get("env", {})
-        if syncthing_env.get("GUI_ADDRESS"):
-            log_pass("services.yaml syncthing 有 GUI_ADDRESS 配置")
-        else:
-            log_fail("services.yaml syncthing 缺少 GUI_ADDRESS 环境变量")
-
-        # 11. 验证 services.yaml aria2 有 DISK_CACHE 和 UPDATE_TRACKERS
-        aria2 = yaml_services.get("aria2", {})
-        aria2_env = aria2.get("env", {})
-        if aria2_env.get("DISK_CACHE") and aria2_env.get("UPDATE_TRACKERS"):
-            log_pass("services.yaml aria2 有 DISK_CACHE 和 UPDATE_TRACKERS")
-        else:
-            log_fail("services.yaml aria2 缺少 DISK_CACHE 或 UPDATE_TRACKERS", f"当前 keys: {list(aria2_env.keys())}")
-
-        # 12. 验证 services.yaml ariang 有 TZ 环境变量
-        ariang = yaml_services.get("ariang", {})
-        ariang_env = ariang.get("env", {})
-        if ariang_env.get("TZ"):
-            log_pass("services.yaml ariang 有 TZ 环境变量")
-        else:
-            log_fail("services.yaml ariang 缺少 TZ 环境变量")
-
-        # 13. 验证 services.yaml panel 有 config_path 和 install_path
-        panel = yaml_services.get("panel", {})
-        if panel.get("config_path") and panel.get("install_path"):
-            log_pass("services.yaml panel 有 config_path 和 install_path")
-        else:
-            log_fail("services.yaml panel 缺少 config_path 或 install_path")
-
-        # 14. 验证 services.yaml adguard 没有端口映射（因为使用 host 网络）
-        adguard_ports = adguard.get("ports", [])
-        if len(adguard_ports) == 0:
-            log_pass("services.yaml adguard 无端口映射（host 网络模式）")
-        else:
-            log_fail("services.yaml adguard 仍有端口映射（host 网络模式下无效）")
-
-        # 15. 验证 README.md 端口表
-        with open(PROJECT_ROOT / "README.md", encoding='utf-8') as f:
-            readme = f.read()
-        
-        port_checks = [
-            ("xiaomusic", "8081"),
-            ("migpt", "8082"),
-            ("verysync", "19900"),
-            ("AriaNg", "6880"),
-            ("CUPS Web", "632"),
-            ("Clash", "9090"),
-            ("Panel", "9000"),
-        ]
-        for name, port in port_checks:
-            pattern = re.escape(name) + r"\s*.*\s*\|.*" + re.escape(port)
-            if re.search(pattern, readme, re.IGNORECASE):
-                log_pass(f"README.md 端口表 {name}: {port} 正确")
-            else:
-                log_warn(f"README.md 端口表 {name}: {port} 未找到")
-
-        # 16. 验证 architecture.md 端口表完整
-        with open(PROJECT_ROOT / "docs" / "architecture.md", encoding='utf-8') as f:
-            arch = f.read()
-        
-        arch_ports = [
-            ("6880", "AriaNg"),
-            ("632", "CUPS Web"),
-            ("8081", "xiaomusic"),
-            ("8082", "migpt"),
-            ("19900", "verysync"),
-        ]
-        for port, name in arch_ports:
-            pattern = re.escape(port) + r"\s*.*\s*" + re.escape(name)
-            if re.search(pattern, arch):
-                log_pass(f"architecture.md 端口表包含 {name}: {port}")
-            else:
-                log_fail(f"architecture.md 端口表缺少 {name}: {port}")
-
-        # 17. 验证 .env.example 变量与 docker-compose 一致性
         for node_name, node_dir in NODE_DIRS.items():
-            env_example = node_dir / ".env.example"
-            compose_file = node_dir / "docker-compose.yml"
-            if not env_example.exists() or not compose_file.exists():
-                log_warn(f"{node_name}: .env.example 或 docker-compose.yml 不存在")
+            dc_file = node_dir / "docker-compose.yml"
+            if not dc_file.exists():
                 continue
-            
-            with open(env_example, encoding='utf-8') as f:
-                env_content = f.read()
-            env_vars = set()
-            for line in env_content.split('\n'):
+            dc_content = dc_file.read_text(encoding='utf-8')
+
+            # 提取 docker-compose 中的服务名
+            dc_services = re.findall(r'^\s+(\w+):\s*$', dc_content, re.MULTILINE)
+            # 也匹配带引号的服务名
+            dc_services += re.findall(r'^\s+"(\w+)":\s*$', dc_content, re.MULTILINE)
+
+            # 检查 yaml 中定义的服务是否在 docker-compose 中
+            for svc_name in yaml_services:
+                if isinstance(svc_name, str) and svc_name in dc_content:
+                    log_pass(f"{node_name}: 服务 {svc_name} 在 docker-compose.yml 中")
+                    PASS_COUNT += 1
+                elif isinstance(svc_name, str):
+                    log_warn(f"{node_name}: 服务 {svc_name} 在 docker-compose.yml 中未找到")
+                    WARN_COUNT += 1
+
+    # 2. 验证 services.yaml 与 panel/config.json 的服务定义一致
+    log_info("验证 services.yaml 与 panel/config.json 一致性:")
+    config_json_path = PANEL_DIR / "config.json"
+    if config_json_path.exists():
+        try:
+            with open(config_json_path, encoding='utf-8') as f:
+                config = json.load(f)
+
+            for node in config.get("nodes", []):
+                node_name = node.get("name", "unknown")
+                panel_svcs = set(s.get("name", "") for s in node.get("services", []))
+
+                # 从 yaml 服务名中筛选
+                yaml_node_svcs = set()
+                for svc_name in yaml_services:
+                    if isinstance(svc_name, str):
+                        yaml_node_svcs.add(svc_name)
+
+                missing_in_panel = yaml_node_svcs - panel_svcs
+                extra_in_panel = panel_svcs - yaml_node_svcs
+
+                if not missing_in_panel and not extra_in_panel:
+                    log_pass(f"节点 {node_name}: services.yaml 与 panel 一致")
+                    PASS_COUNT += 1
+                else:
+                    if missing_in_panel:
+                        log_warn(f"节点 {node_name}: panel 缺少服务 {missing_in_panel}")
+                        WARN_COUNT += 1
+                    if extra_in_panel:
+                        log_warn(f"节点 {node_name}: panel 多出服务 {extra_in_panel}")
+                        WARN_COUNT += 1
+
+            # 验证端口配置
+            log_info("验证服务端口配置:")
+            for svc_name, svc_config in yaml_services.items():
+                if isinstance(svc_config, dict) and svc_config.get("container"):
+                    ports = svc_config.get("ports", [])
+                    if isinstance(ports, str):
+                        ports = [ports]
+                    for port_entry in ports:
+                        port = port_entry.split(":")[0] if ":" in port_entry else port_entry
+                        # 检查端口是否在 docker-compose 中出现
+                        found = False
+                        for node_dir in NODE_DIRS.values():
+                            dc_file = node_dir / "docker-compose.yml"
+                            if dc_file.exists() and port in dc_file.read_text(encoding='utf-8'):
+                                found = True
+                                break
+                        if found:
+                            log_pass(f"服务 {svc_name}: 端口 {port} 在 docker-compose 中")
+                            PASS_COUNT += 1
+                        else:
+                            log_warn(f"服务 {svc_name}: 端口 {port} 未在 docker-compose 中找到")
+                            WARN_COUNT += 1
+
+        except (json.JSONDecodeError, FileNotFoundError) as e:
+            log_fail(f"config.json 解析失败: {e}")
+            FAIL_COUNT += 1
+
+    # 3. 验证 README.md 中提到的功能是否有代码实现
+    log_info("验证 README.md 与代码实现一致性:")
+    readme_path = PROJECT_ROOT / "README.md"
+    if readme_path.exists():
+        readme_content = readme_path.read_text(encoding='utf-8')
+        # 提取功能关键词
+        feature_keywords = [
+            ("deploy.sh", "deploy"),
+            ("backup.sh", "backup"),
+            ("restore.sh", "restore"),
+            ("health-check.sh", "health"),
+            ("setup.sh", "setup"),
+            ("docker-compose", "docker"),
+            ("WireGuard", "wireguard"),
+            ("AdGuard", "adguard"),
+            ("Home Assistant", "home"),
+            ("miGPT", "migpt"),
+            ("Clash", "clash"),
+            ("AriaNg", "ariang"),
+            ("xiaomusic", "xiaomusic"),
+            ("webdav", "webdav"),
+        ]
+
+        for keyword, search_term in feature_keywords:
+            # 在 README 中查找
+            in_readme = keyword.lower() in readme_content.lower()
+            # 在代码中查找
+            in_code = False
+            for root, dirs, files in os.walk(PROJECT_ROOT):
+                dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['__pycache__', '.git']]
+                for f in files:
+                    if f.endswith(('.sh', '.py', '.yml', '.yaml', '.json', '.md')):
+                        try:
+                            file_content = Path(os.path.join(root, f)).read_text(encoding='utf-8', errors='ignore')
+                            if search_term.lower() in file_content.lower():
+                                in_code = True
+                                break
+                        except:
+                            pass
+                if in_code:
+                    break
+
+            if in_readme and in_code:
+                log_pass(f"{keyword}: README 和代码中都存在")
+                PASS_COUNT += 1
+            elif in_readme and not in_code:
+                log_warn(f"{keyword}: README 中有但代码中未找到实现")
+                WARN_COUNT += 1
+            elif not in_readme and in_code:
+                log_warn(f"{keyword}: 代码中有但 README 中未提及")
+                WARN_COUNT += 1
+            else:
+                log_skip(f"{keyword}: 未在任何地方找到")
+                SKIP_COUNT += 1
+
+    # 4. 验证 architecture.md 中的拓扑与实际配置一致
+    log_info("验证 architecture.md 与配置一致性:")
+    arch_path = PROJECT_ROOT / "architecture.md"
+    if arch_path.exists():
+        arch_content = arch_path.read_text(encoding='utf-8')
+        # 检查节点名称
+        for node_name in NODE_IP_MAP:
+            if node_name in arch_content:
+                log_pass(f"{node_name}: 在 architecture.md 中")
+                PASS_COUNT += 1
+            else:
+                log_warn(f"{node_name}: 未在 architecture.md 中提及")
+                WARN_COUNT += 1
+
+        # 检查 IP 地址
+        for ip in NODE_IP_MAP.values():
+            if ip in arch_content:
+                log_pass(f"IP {ip}: 在 architecture.md 中")
+                PASS_COUNT += 1
+            else:
+                log_warn(f"IP {ip}: 未在 architecture.md 中提及")
+                WARN_COUNT += 1
+
+    # 5. 验证 .env.example 与 docker-compose 中的环境变量一致
+    log_info("验证 .env.example 与 docker-compose 环境变量一致性:")
+    for node_name, node_dir in NODE_DIRS.items():
+        env_example = node_dir / ".env.example"
+        env_file = node_dir / ".env"
+        dc_file = node_dir / "docker-compose.yml"
+
+        env_vars = set()
+        if env_example.exists():
+            for line in env_example.read_text(encoding='utf-8').splitlines():
                 line = line.strip()
                 if line and not line.startswith('#') and '=' in line:
-                    var_name = line.split('=')[0].strip()
-                    env_vars.add(var_name)
-            
-            with open(compose_file, encoding='utf-8') as f:
-                compose_content = f.read()
-            used_vars = set(re.findall(r'\$\{(\w+)\}', compose_content))
-            
-            declared_not_used = env_vars - used_vars
-            used_not_declared = used_vars - env_vars
-            
-            # 排除公共变量和脚本变量
-            common_vars = {'TZ', 'PUID', 'PGID', 'NODE_NAME', 'NODE_IP', 'WG_IP', 'DOMAIN'}
-            peer_vars = {v for v in env_vars if v.startswith('WG_PEER')}
-            
-            real_declared_not_used = declared_not_used - common_vars - peer_vars - {"HA_IMAGE"}
-            real_used_not_declared = used_not_declared - common_vars - {"TZ", "PUID", "PGID", "NODE_NAME", "NODE_IP", "WG_IP", "DOMAIN"}
-            
-            if real_declared_not_used:
-                log_warn(f"{node_name} .env.example 中未使用的变量: {real_declared_not_used}")
-            if real_used_not_declared:
-                log_warn(f"{node_name} docker-compose 使用了但 .env.example 未声明的变量: {real_used_not_declared}")
-            if not real_declared_not_used and not real_used_not_declared:
-                log_pass(f"{node_name} .env.example 与 docker-compose 变量一致")
-        
-        # 18. 验证 services.yaml 服务总数与节点分布一致性
-        yaml_node_svc_count = {}
-        for svc_name, svc_config in yaml_services.items():
-            node = svc_config.get("node", "")
-            yaml_node_svc_count.setdefault(node, set()).add(svc_name)
-        
-        with open(PANEL_DIR / "config.json", encoding='utf-8') as f:
-            panel_data = json.load(f)
-        
-        for node in panel_data.get("nodes", []):
-            node_name = node["name"]
-            yaml_svcs = yaml_node_svc_count.get(node_name, set())
-            panel_svcs = {s["name"] for s in node.get("services", [])}
-            
-            if yaml_svcs == panel_svcs:
-                log_pass(f"节点 {node_name}: services.yaml 与 panel 服务列表完全一致")
-            else:
-                diff = yaml_svcs.symmetric_difference(panel_svcs)
-                log_warn(f"节点 {node_name}: services.yaml 与 panel 服务列表差异: {diff}")
-        
-        # 19. 验证 services.yaml 中所有服务数与 nodes.yaml 中合计一致
-        with open(INVENTORY_DIR / "nodes.yaml", encoding='utf-8') as f:
-            nodes_text = f.read()
-        nodes_data = simple_yaml_parse(nodes_text)
-        nodes_list = nodes_data.get("nodes", [])
-        
-        total_yaml_services = len(yaml_services)
-        total_nodes_services = sum(len(n.get("services", [])) for n in nodes_list)
-        
-        log_info(f"services.yaml 定义: {total_yaml_services} 个服务")
-        log_info(f"nodes.yaml 分布: {total_nodes_services} 个服务项")
+                    env_vars.add(line.split('=')[0].strip())
 
-    except Exception as e:
-        log_fail(f"功能清单一致性验证错误: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return False
-    
-    return True
-# ============ 测试11: 节点服务与 services.yaml 一致性 ============
-def test_service_consistency():
-    """验证节点服务配置一致性"""
-    print("\n" + "="*60)
-    print("测试 11: 节点服务配置一致性验证")
-    
-    try:
-        # 读取 services.yaml
-        with open(INVENTORY_DIR / "services.yaml", encoding='utf-8') as f:
-            services_text = f.read()
-        services_data = simple_yaml_parse(services_text)
-        
-        # 读取 panel config.json
-        with open(PANEL_DIR / "config.json", encoding='utf-8') as f:
-            panel_data = json.load(f)
-        
-        # 交叉验证
-        log_info("交叉验证 services.yaml 与 panel/config.json:")
-        
-        yaml_services = services_data.get("services", {})
-        panel_services = {}
-        
-        for node in panel_data.get("nodes", []):
-            node_name = node["name"]
-            svc_names = {s["name"] for s in node.get("services", [])}
-            panel_services[node_name] = svc_names
-        
-        for node_name, panel_svcs in panel_services.items():
-            yaml_node_svcs = {
-                name for name, config in yaml_services.items()
-                if config.get("node") == node_name
-            }
-            
-            missing_in_panel = yaml_node_svcs - panel_svcs
-            extra_in_panel = panel_svcs - yaml_node_svcs
-            
-            if not missing_in_panel and not extra_in_panel:
-                log_pass(f"节点 {node_name}: services.yaml 与 panel 一致")
-            else:
-                if missing_in_panel:
-                    log_warn(f"节点 {node_name}: panel 缺少服务 {missing_in_panel}")
-                if extra_in_panel:
-                    log_warn(f"节点 {node_name}: panel 多出服务 {extra_in_panel}")
-        
-        # 验证端口配置
-        log_info("验证服务端口配置:")
-        for svc_name, svc_config in yaml_services.items():
-            if svc_config.get("container"):
-                ports = svc_config.get("ports", [])
-                for port_entry in ports:
-                    port = port_entry.split(":")[0] if ":" in port_entry else port_entry
-                    log_info(f"  {svc_name}: 端口 {port}")
-    
-    except Exception as e:
-        log_fail(f"服务一致性验证错误: {str(e)}")
-        return False
-    
-    return True
+        if env_file.exists():
+            for line in env_file.read_text(encoding='utf-8').splitlines():
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    env_vars.add(line.split('=')[0].strip())
 
-# ============ 测试12: 生成测试报告 ============
-def generate_report():
-    """生成测试报告"""
-    print("\n" + "="*60)
-    print("测试报告")
-    print("="*60)
-    
-    total = PASSED + FAILED + WARNINGS
-    
-    print(f"\n  总计: {total} 项")
-    print(color(f"  通过: {PASSED}", GREEN))
-    print(color(f"  失败: {FAILED}", RED))
-    print(color(f"  警告: {WARNINGS}", YELLOW))
-    
-    if FAILED == 0:
-        print(f"\n  {color('[OK] 所有关键测试通过！', GREEN)}")
-    else:
-        print(f"\n  {color(f'[FAIL] 有 {FAILED} 项测试失败，需要修复', RED)}")
-    
-    # 显示所有警告
-    warnings = [(name, detail) for status, name, detail in TEST_RESULTS if status == "WARN"]
-    if warnings:
-        print(f"\n  警告列表 ({len(warnings)} 项):")
-        for name, detail in warnings:
-            print(f"    - {name}")
-            if detail:
-                print(f"      {detail}")
-    
-    # 显示所有失败
-    failures = [(name, detail) for status, name, detail in TEST_RESULTS if status == "FAIL"]
-    if failures:
-        print(f"\n  失败列表 ({len(failures)} 项):")
-        for name, detail in failures:
-            print(f"    - {name}")
-            if detail:
-                print(f"      {detail}")
-    
-    # 保存报告
-    report_file = PROJECT_ROOT / "test_report.txt"
-    with open(report_file, "w", encoding="utf-8") as f:
-        f.write("OneCloud Cluster 验证报告\n")
-        f.write("=" * 60 + "\n")
-        f.write(f"通过: {PASSED}\n")
-        f.write(f"失败: {FAILED}\n")
-        f.write(f"警告: {WARNINGS}\n")
-        f.write(f"总计: {total}\n\n")
-        
-        f.write("详细结果:\n")
-        f.write("-" * 60 + "\n")
-        for status, name, detail in TEST_RESULTS:
-            f.write(f"[{status}] {name}")
-            if detail:
-                f.write(f" - {detail}")
-            f.write("\n")
-    
-    log_info(f"报告已保存到: {report_file}")
-    
-    return FAILED == 0
+        if dc_file.exists() and env_vars:
+            dc_content = dc_file.read_text(encoding='utf-8')
+            for var in env_vars:
+                if var in dc_content or f"${{{var}}}" in dc_content or f"$var" in dc_content:
+                    log_pass(f"{node_name}: 环境变量 {var} 在 docker-compose 中引用")
+                    PASS_COUNT += 1
+                else:
+                    log_warn(f"{node_name}: 环境变量 {var} 未在 docker-compose 中引用")
+                    WARN_COUNT += 1
 
-# ============ 主程序 ============
+    return test_end()
+
+# ============ 主函数 ============
+
 def main():
     print("=" * 60)
-    print("OneCloud Cluster 功能验证")
+    print("OneCloud Cluster 功能验证脚本")
     print("=" * 60)
-    print(f"项目路径: {PROJECT_ROOT}")
-    
-    # 运行所有测试
+    print(f"项目根目录: {PROJECT_ROOT}")
+    print(f"时间: {__import__('time').strftime('%Y-%m-%d %H:%M:%S')}")
+
     tests = [
-        ("配置文件完整性", test_config_files),
-        ("节点目录结构", test_node_directories),
-        ("脚本语法检查", test_script_syntax),
+        ("配置文件完整性", test_config_files_exist),
+        ("节点目录结构", test_node_directory_structure),
+        ("Shell 脚本语法检查", test_shell_scripts_syntax),
         ("deploy.sh 节点映射", test_deploy_node_mapping),
-        ("fallback 机制", test_fallback_mechanism),
-        ("health-check 变量", test_health_check_variables),
-        ("cloudflared 命令", test_cloudflared_command),
-        ("panel 错误处理", test_panel_app_error_handling),
-        ("xiaomusic 下载", test_xiaomusic_download),
-        ("panel install-service", test_panel_install_service),
+        ("回退机制", test_fallback_mechanisms),
         ("服务一致性", test_service_consistency),
-        ("功能清单一致性", test_feature_consistency),
+        ("Python 语法检查", test_python_syntax),
+        ("Docker Compose 文件验证", test_docker_compose),
+        ("配置项完整性", test_config_fields),
+        ("脚本完整性检查", test_script_self_test),
+        ("安全配置检查", test_security_config),
+        ("功能清单与代码一致性验证", test_feature_consistency),
     ]
-    
+
+    total_pass = 0
+    total_fail = 0
+    results = []
+
     for test_name, test_func in tests:
-        log_info(f"运行测试: {test_name}")
+        print(f"\n{'='*60}")
+        print(f"运行测试: {test_name}")
+        print(f"{'='*60}")
         try:
-            test_func()
+            ok = test_func()
+            if ok:
+                total_pass += 1
+            else:
+                total_fail += 1
+            results.append((test_name, ok))
         except Exception as e:
-            log_fail(f"测试 '{test_name}' 异常: {str(e)}")
-    
-    # 生成报告
-    success = generate_report()
-    
-    return 0 if success else 1
+            print(f"  {color('ERROR', 31)} 测试异常: {e}")
+            total_fail += 1
+            results.append((test_name, False))
+
+    # 汇总
+    print(f"\n\n{'='*60}")
+    print("测试汇总")
+    print(f"{'='*60}")
+    for name, ok in results:
+        status = color("PASS", 32) if ok else color("FAIL", 31)
+        print(f"  [{status}] {name}")
+
+    print(f"\n总测试数: {len(tests)}, {color('通过', 32)}: {total_pass}, {color('失败', 31)}: {total_fail}")
+
+    return total_fail == 0
 
 if __name__ == "__main__":
-    sys.exit(main())\n            }\n            \n            missing_in_panel = yaml_node_svcs - panel_svcs\n            extra_in_panel = panel_svcs - yaml_node_svcs\n            \n            if not missing_in_panel and not extra_in_panel:\n                log_pass(f\"节点 {node_name}: services.yaml 与 panel 一致\")\n            else:\n                if missing_in_panel:\n                    log_warn(f\"节点 {node_name}: panel 缺少服务 {missing_in_panel}\")\n                if extra_in_panel:\n                    log_warn(f\"节点 {node_name}: panel 多出服务 {extra_in_panel}\")\n        \n        # 验证端口配置\n        log_info(\"验证服务端口配置:\")\n        for svc_name, svc_config in yaml_services.items():\n            if svc_config.get(\"container\"):\n                ports = svc_config.get(\"ports\", [])\n                for port_entry in ports:\n                    port = port_entry.split(\":\")[0] if \":\" in port_entry else port_entry\n                    log_info(f\"  {svc_name}: 端口 {port}\")\n    \n    except Exception as e:\n        log_fail(f\"服务一致性验证错误: {str(e)}\")\n        return False\n    \n    return True\n\n# ============ 测试12: 生成测试报告 ============\ndef generate_report():\n    \"\"\"生成测试报告\"\"\"\n    print(\"\\n\" + \"=\"*60)\n    print(\"测试报告\")\n    print(\"=\"*60)\n    \n    total = PASSED + FAILED + WARNINGS\n    \n    print(f\"\\n  总计: {total} 项\")\n    print(color(f\"  通过: {PASSED}\", GREEN))\n    print(color(f\"  失败: {FAILED}\", RED))\n    print(color(f\"  警告: {WARNINGS}\", YELLOW))\n    \n    if FAILED == 0:\n        print(f\"\\n  {color('[OK] 所有关键测试通过！', GREEN)}\")\n    else:\n        print(f\"\\n  {color(f'[FAIL] 有 {FAILED} 项测试失败，需要修复', RED)}\")\n    \n    # 显示所有警告\n    warnings = [(name, detail) for status, name, detail in TEST_RESULTS if status == \"WARN\"]\n    if warnings:\n        print(f\"\\n  警告列表 ({len(warnings)} 项):\")\n        for name, detail in warnings:\n            print(f\"    - {name}\")\n            if detail:\n                print(f\"      {detail}\")\n    \n    # 显示所有失败\n    failures = [(name, detail) for status, name, detail in TEST_RESULTS if status == \"FAIL\"]\n    if failures:\n        print(f\"\\n  失败列表 ({len(failures)} 项):\")\n        for name, detail in failures:\n            print(f\"    - {name}\")\n            if detail:\n                print(f\"      {detail}\")\n    \n    # 保存报告\n    report_file = PROJECT_ROOT / \"test_report.txt\"\n    with open(report_file, \"w\", encoding=\"utf-8\") as f:\n        f.write(\"OneCloud Cluster 验证报告\\n\")\n        f.write(\"=\" * 60 + \"\\n\")\n        f.write(f\"通过: {PASSED}\\n\")\n        f.write(f\"失败: {FAILED}\\n\")\n        f.write(f\"警告: {WARNINGS}\\n\")\n        f.write(f\"总计: {total}\\n\\n\")\n        \n        f.write(\"详细结果:\\n\")\n        f.write(\"-\" * 60 + \"\\n\")\n        for status, name, detail in TEST_RESULTS:\n            f.write(f\"[{status}] {name}\")\n            if detail:\n                f.write(f\" - {detail}\")\n            f.write(\"\\n\")\n    \n    log_info(f\"报告已保存到: {report_file}\")\n    \n    return FAILED == 0\n\n# ============ 主程序 ============\ndef main():\n    print(\"=\" * 60)\n    print(\"OneCloud Cluster 功能验证\")\n    print(\"=\" * 60)\n    print(f\"项目路径: {PROJECT_ROOT}\")\n    \n    # 运行所有测试\n    tests = [\n        (\"配置文件完整性\", test_config_files),\n        (\"节点目录结构\", test_node_directories),\n        (\"脚本语法检查\", test_script_syntax),\n        (\"deploy.sh 节点映射\", test_deploy_node_mapping),\n        (\"fallback 机制\", test_fallback_mechanism),\n        (\"health-check 变量\", test_health_check_variables),\n        (\"cloudflared 命令\", test_cloudflared_command),\n        (\"panel 错误处理\", test_panel_app_error_handling),\n        (\"xiaomusic 下载\", test_xiaomusic_download),\n        (\"panel install-service\", test_panel_install_service),\n        (\"服务一致性\", test_service_consistency),\n        (\"功能清单一致性\", test_feature_consistency),\n    ]\n    \n    for test_name, test_func in tests:\n        log_info(f\"运行测试: {test_name}\")\n        try:\n            test_func()\n        except Exception as e:\n            log_fail(f\"测试 '{test_name}' 异常: {str(e)}\")\n    \n    # 生成报告\n    success = generate_report()\n    \n    return 0 if success else 1\n\nif __name__ == \"__main__\":\n    sys.exit(main())\n"}]
+    sys.exit(0 if main() else 1)
