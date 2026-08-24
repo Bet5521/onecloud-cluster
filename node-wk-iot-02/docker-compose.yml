@@ -18,7 +18,7 @@ services:
       options:
         max-size: 10m
         max-file: "3"
-    mem_limit: 512m
+    mem_limit: 256m
     pids_limit: 256
 
   piwigo:
@@ -40,5 +40,5 @@ services:
       driver: json-file
       options:
         max-size: 5m
-        max-file: "3"
+        max-file: "2"
     mem_limit: 128m

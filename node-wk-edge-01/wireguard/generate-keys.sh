@@ -9,8 +9,10 @@ cd "$WG_DIR"
 
 echo "[*] 生成 WireGuard Server 密钥..."
 if [ ! -f server_private.key ]; then
-    wg genkey | tee server_private.key | wg pubkey > server_public.key
-    echo "Server Private Key: $(cat server_private.key)"
+    wg genkey > server_private.key
+    chmod 600 server_private.key
+    wg pubkey < server_private.key > server_public.key
+    chmod 600 server_public.key
     echo "Server Public Key:  $(cat server_public.key)"
 else
     echo "[!] Server 密钥已存在, 跳过"
@@ -19,8 +21,10 @@ fi
 echo "[*] 生成 Peer 密钥..."
 for peer in 01 02 03; do
     if [ ! -f "peer${peer}_private.key" ]; then
-        wg genkey | tee "peer${peer}_private.key" | wg pubkey > "peer${peer}_public.key"
-        echo "Peer${peer} Private: $(cat peer${peer}_private.key)"
+        wg genkey > "peer${peer}_private.key"
+        chmod 600 "peer${peer}_private.key"
+        wg pubkey < "peer${peer}_private.key" > "peer${peer}_public.key"
+        chmod 600 "peer${peer}_public.key"
         echo "Peer${peer} Public:  $(cat peer${peer}_public.key)"
     fi
 done

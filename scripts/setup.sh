@@ -827,15 +827,30 @@ from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins=[f"http://localhost:{os.environ.get('MIGPT_PORT', '8082')}"])
 
 # 配置: 修改为你的 LLM API
 LLM_API_URL = os.environ.get("LLM_API_URL", "https://api.openai.com/v1/chat/completions")
 LLM_API_KEY = os.environ.get("LLM_API_KEY", "your-api-key")
 LLM_MODEL = os.environ.get("LLM_MODEL", "gpt-3.5-turbo")
+ACCESS_TOKEN = os.environ.get("MIGPT_ACCESS_TOKEN", "")
+
+def require_token():
+    """简单的 Token 认证"""
+    auth_header = request.headers.get("Authorization", "")
+    if not ACCESS_TOKEN:
+        return True  # 未设置 token 时允许所有请求（兼容旧配置）
+    if auth_header == f"Bearer {ACCESS_TOKEN}":
+        return True
+    # 也支持 URL 参数方式
+    if request.args.get("token") == ACCESS_TOKEN:
+        return True
+    return False
 
 @app.route("/v1/chat/completions", methods=["POST"])
 def chat_completions():
+    if not require_token():
+        return jsonify({"error": "未授权: 需要 Bearer Token"}), 401
     headers = {"Authorization": f"Bearer {LLM_API_KEY}", "Content-Type": "application/json"}
     resp = requests.post(LLM_API_URL, json=request.json, headers=headers, stream=True)
     return Response(resp.iter_content(chunk_size=8192),
@@ -860,6 +875,8 @@ ExecStart=/usr/bin/python3 ${DATA_DIR}/migpt/proxy.py
 Restart=on-failure
 RestartSec=5
 Environment=LLM_API_KEY=your-api-key
+Environment=MIGPT_ACCESS_TOKEN=
+Environment=MIGPT_PORT=8082
 
 [Install]
 WantedBy=multi-user.target

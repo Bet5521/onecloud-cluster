@@ -19,7 +19,7 @@ services:
     mem_limit: 64m
 
   adguard:
-    image: 11notes/adguard:latest
+    image: adguard/adguardhome:latest
     container_name: adguard
     restart: unless-stopped
     network_mode: host

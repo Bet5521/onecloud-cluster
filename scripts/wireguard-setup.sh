@@ -44,7 +44,10 @@ for NODE in "${NODES[@]}"; do
     PUB_FILE="$WG_DIR/${NAME}.pub"
 
     if [ ! -f "$KEY_FILE" ]; then
-        wg genkey | tee "$KEY_FILE" | wg pubkey > "$PUB_FILE"
+        wg genkey | tee "$KEY_FILE" > /dev/null
+        wg pubkey < "$KEY_FILE" > "$PUB_FILE"
+        chmod 600 "$KEY_FILE"
+        chmod 600 "$PUB_FILE"
         log_info "$NAME 密钥已生成"
     else
         log_info "$NAME 密钥已存在, 跳过"
@@ -107,12 +110,11 @@ WGEOF
 done
 
 # 显示汇总
-echo -e "\n${GREEN}密钥汇总 (用于交叉配置):${NC}"
+echo -e "\n${GREEN}公钥汇总 (用于交叉配置):${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 for NODE in "${NODES[@]}"; do
     IFS='|' read -r NAME _ _ _ _ <<< "$NODE"
     echo -e "  ${NAME}:"
-    echo -e "    PrivateKey: ${YELLOW}${PRIVATE_KEYS[$NAME]:0:20}...${NC}"
     echo -e "    PublicKey:  ${YELLOW}${PUBLIC_KEYS[$NAME]}${NC}"
 done
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

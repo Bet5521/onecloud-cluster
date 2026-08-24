@@ -13,7 +13,7 @@ from flask import Flask, jsonify, render_template, request
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins=[f"http://localhost:{os.environ.get('PANEL_PORT', '9000')}", "http://127.0.0.1:*"])
 
 CONFIG_PATH = os.environ.get("PANEL_CONFIG", os.path.join(os.path.dirname(__file__), "config.json"))
 
@@ -70,9 +70,9 @@ def get_system_info(ip):
     result = run_ssh(ip, """
         echo "LOAD=$(cat /proc/loadavg | cut -d' ' -f1)"
         echo "UPTIME=$(uptime -p)"
-        echo "MEM=$(free -m | awk 'NR==2{print $3"/"$2}')"
-        echo "SWAP=$(free -m | awk 'NR==3{print $3"/"$2}')"
-        echo "DISK=$(df -h /mnt/sd 2>/dev/null | awk 'NR==2{print $4"/"$2}' || df -h / | awk 'NR==2{print $4"/"$2}')"
+        echo "MEM=$(free -m | awk 'NR==2{print $3\"/\"$2}')"
+        echo "SWAP=$(free -m | awk 'NR==3{print $3\"/\"$2}')"
+        echo "DISK=$(df -h /mnt/sd 2>/dev/null | awk 'NR==2{print $4\"/\"$2}' || df -h / | awk 'NR==2{print $4\"/\"$2}')"
     """)
     info = {}
     if result["ok"]:
@@ -153,6 +153,23 @@ def collect_all_status():
 
     return status
 
+def _check_auth():
+    """简单 Basic Auth 校验"""
+    auth = request.authorization
+    if not auth or auth.username != PANEL_USER or auth.password != PANEL_PASS:
+        return False
+    return True
+
+def require_auth(f):
+    """装饰器: 要求 API 请求必须通过 Basic Auth 认证"""
+    from functools import wraps
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not _check_auth():
+            return jsonify({"ok": False, "error": "未授权: 需要 Basic Auth 认证"}), 401
+        return f(*args, **kwargs)
+    return decorated
+
 # ---- 路由 ----
 
 @app.route("/")
@@ -160,10 +177,12 @@ def index():
     return render_template("index.html")
 
 @app.route("/api/status")
+@require_auth
 def api_status():
     return jsonify(collect_all_status())
 
 @app.route("/api/node/<node_name>/action", methods=["POST"])
+@require_auth
 def node_action(node_name):
     data = request.json or {}
     action = data.get("action", "")
@@ -171,6 +190,17 @@ def node_action(node_name):
     node = next((n for n in config["nodes"] if n["name"] == node_name), None)
     if not node:
         return jsonify({"ok": False, "error": "节点未找到"}), 404
+
+    # 危险操作二次确认
+    dangerous_actions = ["reboot", "shutdown"]
+    if action in dangerous_actions:
+        confirm = data.get("confirm", False)
+        if not confirm:
+            return jsonify({
+                "ok": False,
+                "confirm_required": True,
+                "error": f"危险操作 '{action}' 需要二次确认, 请设置 confirm=true"
+            }), 400
 
     actions = {
         "reboot": f"reboot",
@@ -188,6 +218,7 @@ def node_action(node_name):
     return jsonify({"ok": False, "error": f"未知操作: {action}"}), 400
 
 @app.route("/api/service/<node_name>/<svc_name>/<action>")
+@require_auth
 def service_action(node_name, svc_name, action):
     config = load_config()
     node = next((n for n in config["nodes"] if n["name"] == node_name), None)
@@ -209,19 +240,9 @@ def service_action(node_name, svc_name, action):
 
     return jsonify({"ok": False, "error": f"未知操作: {action}"}), 400
 
-def _check_auth():
-    """简单 Basic Auth 校验，失败返回 None，成功返回 True"""
-    auth = request.authorization
-    if not auth or auth.username != PANEL_USER or auth.password != PANEL_PASS:
-        return False
-    return True
-
 @app.route("/api/exec", methods=["POST"])
+@require_auth
 def exec_command():
-    # 认证检查
-    if not _check_auth():
-        return jsonify({"ok": False, "error": "未授权: 需要 Basic Auth 认证"}), 401
-
     data = request.json or {}
     node_name = data.get("node")
     command = data.get("command", "")
@@ -239,6 +260,7 @@ def exec_command():
     return jsonify({"ok": result["ok"], "output": result["stdout"], "error": result["stderr"]})
 
 @app.route("/api/topology")
+@require_auth
 def topology():
     config = load_config()
     return jsonify(config)

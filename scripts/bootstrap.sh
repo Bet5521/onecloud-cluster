@@ -188,13 +188,17 @@ EOF
     netplan apply 2>/dev/null || true
 fi
 
-# ---- 12. 配置 /etc/hosts ----
+# ---- 12. 配置 /etc/hosts（去重追加） ----
 log_info "配置 hosts..."
-cat >> /etc/hosts << EOF
-192.168.1.101  wk-edge-01 edge-01.lan
-192.168.1.102  wk-iot-02 iot-02.lan
-192.168.1.103  wk-storage-03 storage-03.lan
-EOF
+for entry in \
+    "192.168.1.101  wk-edge-01 edge-01.lan" \
+    "192.168.1.102  wk-iot-02 iot-02.lan" \
+    "192.168.1.103  wk-storage-03 storage-03.lan"; do
+    ip=$(echo "$entry" | awk '{print $1}')
+    if ! grep -q "$ip" /etc/hosts 2>/dev/null; then
+        echo "$entry" >> /etc/hosts
+    fi
+done
 
 # ---- 13. 启用 IP 转发 ----
 log_info "启用 IP 转发..."

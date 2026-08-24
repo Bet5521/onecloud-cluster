@@ -20,7 +20,7 @@ services:
   adguard:
     node: wk-edge-01
     container: true
-    image: 11notes/adguard:latest
+    image: adguard/adguardhome:latest
     network_mode: host
     ports: []
     env:
@@ -96,7 +96,7 @@ services:
       - ./homeassistant:/config
       - /run/dbus:/run/dbus:ro
     restart: unless-stopped
-    memory_limit: 512MB
+    memory_limit: 256MB
     public_access:
       type: cloudflare-tunnel
       hostname: home.yourdomain.com
