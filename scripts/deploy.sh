@@ -68,8 +68,8 @@ echo ""
 deploy_node() {
     local NODE_NAME=$1
     local NODE_IP=$2
-    local NODE_DIR_NAME=$3
-    local NODE_SRC="${PROJECT_DIR}/node-${NODE_DIR_NAME}"
+    local NODE_ROLE=$3
+    local NODE_SRC="${PROJECT_DIR}/node-${NODE_ROLE}"
     local REMOTE_BASE="/mnt/sd/srv/${NODE_NAME}"
 
     echo "--- $NODE_NAME ($NODE_IP) ---"
@@ -86,7 +86,7 @@ deploy_node() {
     fi
 
     # 确保远程目录存在
-    ssh "root@${NODE_IP}" "mkdir -p ${REMOTE_BASE}/{cloudflared,adguard/{work,conf},wireguard/config,clash,memos,homeassistant,piwigo/{config,gallery},xiaomusic,migpt,syncthing/{config,data},verysync,aria2/{config,downloads},cupsd/{config,printers,spool},cups-web,panel}"
+    ssh "root@${NODE_IP}" "mkdir -p ${REMOTE_BASE}/{cloudflared,adguard/{work,conf},wireguard/config,clash,memos,homeassistant,piwigo/{config,gallery},xiaomusic,migpt,syncthing/{config,data},verysync,aria2/{config,downloads},cupsd/{config,printers,spool},cups-web,panel,gitea}"
 
     # 分发配置文件
     if [ -d "$NODE_SRC" ]; then
@@ -116,8 +116,8 @@ if [ ${#TARGET_NODES[@]} -eq 0 ]; then
 fi
 
 for NODE in "${TARGET_NODES[@]}"; do
-    IFS='|' read -r NAME IP DIR_NAME <<< "$NODE"
-    deploy_node "$NAME" "$IP" "$DIR_NAME" || true
+    IFS='|' read -r NAME IP ROLE <<< "$NODE"
+    deploy_node "$NAME" "$IP" "$ROLE" || true
 done
 
 echo "=========================================="

@@ -55,8 +55,7 @@ backup_remote() {
     local LOCAL_NAME=$3
     local DESC=$4
 
-    # 使用 ls 替代 test -e, 以支持通配符路径展开
-    if ssh -o ConnectTimeout=5 "root@${NODE_IP}" "ls -d $REMOTE_PATH >/dev/null 2>&1"; then
+    if ssh -o ConnectTimeout=5 "root@${NODE_IP}" "test -e $REMOTE_PATH" 2>/dev/null; then
         log_info "备份 $DESC from $NODE_IP..."
         rsync -az "root@${NODE_IP}:${REMOTE_PATH}" \
             "${BACKUP_DIR}/${TIMESTAMP}/${LOCAL_NAME}/" 2>/dev/null
@@ -126,6 +125,8 @@ case "$BACKUP_TYPE" in
             backup_remote 192.168.1.103 "/mnt/sd/srv/wk-storage-03/aria2" "aria2" "aria2"
         elif [ "$SVC" = "syncthing" ]; then
             backup_remote 192.168.1.103 "/mnt/sd/srv/wk-storage-03/syncthing" "syncthing" "Syncthing"
+        elif [ "$SVC" = "gitea" ]; then
+            backup_remote 192.168.1.103 "/mnt/sd/srv/wk-storage-03/gitea" "gitea" "Gitea"
         else
             log_error "未知服务: $SVC"
             exit 1
