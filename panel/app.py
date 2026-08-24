@@ -1,1 +1,273 @@
-IyEvdXNyL2Jpbi9lbnYgcHl0aG9uMwojID09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PQojICBPbmVDbG91ZCBDbHVzdGVyIENvbnRyb2wgUGFuZWwKIyAgRmxhc2sgV2ViIOW6lOeUqCAtIOmbhue+pOeKtuaAgeebkeaOp+WSjOW/q+aNt+aTjeS9nAojID09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PQoKaW1wb3J0IG9zCmltcG9ydCBqc29uCmltcG9ydCBzdWJwcm9jZXNzCmltcG9ydCB0aHJlYWRpbmcKaW1wb3J0IHRpbWUKZnJvbSBmbGFzayBpbXBvcnQgRmxhc2ssIGpzb25pZnksIHJlbmRlcl90ZW1wbGF0ZSwgcmVxdWVzdApmcm9tIGZsYXNrX2NvcnMgaW1wb3J0IENPUlMKCmFwcCA9IEZsYXNrKF9fbmFtZV9fKQpDT1JTKGFwcCwgb3JpZ2lucz1bZiJodHRwOi8vbG9jYWxob3N0Ontvcy5lbnZpcm9uLmdldCgnUEFORUxfUE9SVCcsICc5MDAwJyl9IiwgImh0dHA6Ly8xMjcuMC4wLjE6KiJdKQoKQ09ORklHX1BBVEggPSBvcy5lbnZpcm9uLmdldCgiUEFORUxfQ09ORklHIiwgb3MucGF0aC5qb2luKG9zLnBhdGguZGlybmFtZShfX2ZpbGVfXyksICJjb25maWcuanNvbiIpKQoKIyAtLS0tIOiupOivgemFjee9riAtLS0tCiMg6YCa6L+H546v5aKD5Y+Y6YePIEFORUxfVVNFUi9QQU5FTF9QQVNTIOiuvue9rui0puWPt+WvhueggQpQQU5FTF9VU0VSID0gb3MuZW52aXJvbi5nZXQoIlBBTkVMX1VTRVIiLCAiYWRtaW4iKQpQQU5FTF9QQVNTID0gb3MuZW52aXJvbi5nZXQoIlBBTkVMX1BBU1MiLCAiY2hhbmdlbWUiKQoKIyDnmb3lkI2NleWUvdL7yA8iWPquFgeiuuOaJp+ihjOi/meS6m+W8gOWktOeahOWRveS7pO+8iQpBTExPV0VEX0NNRF9QUkVGSVhFUyA9ICgKICAgICJmcmVlIiwgImRmIiwgImxzICIsICJjYXQgL3Byb2MiLCAidXB0aW1lIiwgImhvc3RuYW1lIiwKICAgICJkb2NrZXIgcHMiLCAiZG9ja2VyIHN0YXRzIiwgImRvY2tlciBpbnNwZWN0IiwgImRvY2tlciBsb2dzIiwKICAgICJzeXN0ZW1jdGwgc3RhdHVzIiwgInN5c3RlbWN0bCBpcy1hY3RpdmUiLAogICAgImlwIGEiLCAiaXAgYWRkciIsICJzcyAtIiwgIm5ldHN0YXQiLAogICAgImNhdCAvZXRjL29zLXJlbGVhc2UiLCAidW5hbWUiLCAid2hvYW1pIiwgImRhdGUiLAopCgpkZWYgaXNfY29tbWFuZF9zYWZlKGNvbW1hbmQ6IHN0cikgLT4gYm9vbDoKICAgICIiIueZveWQjeWNleagoemqjO+8muWPquWFgeiuuOmihOWumuS5ieeahOWuieWFqOWRveS7pCIiIgogICAgY21kID0gY29tbWFuZC5zdHJpcCgpLmxvd2VyKCkKICAgICMg5YWI5YGa5Z+656GA6buR5ZCN5Y2V5oum5oiq77yI5Y+M5L+d6Zmp77yJCiAgICBibG9ja2VkID0gKCJybSAtcmYiLCAibWtmcyIsICJkZCBpZj0iLCAic2h1dGRvd24iLCAicmVib290IiwgInBvd2Vyb2ZmIiwKICAgICAgICAgICAgICAiOigpeyIsICJmb3JrIGJvbWIiLCAid2dldCBodHRwIiwgImN1cmwgaHR0cCIsICI+L2Rldi9zZCIpCiAgICBpZiBhbnkoYiBpbiBjbWQgZm9yIGIgaW4gYmxvY2tlZCk6CiAgICAgICAgcmV0dXJuIEZhbHNlCiAgICAjIOeZveWQjeWNleWMuWmFzCiAgICByZXR1cm4gYW55KGNtZC5zdGFydHN3aXRoKHApIGZvciBwIGluIEFMTE9XRURfQ01EX1BSRUZJWEVTKQoKZGVmIGxvYWRfY29uZmlnKCk6CiAgICB0cnk6CiAgICAgICAgd2l0aCBvcGVuKENPTkZJR19QQVRIKSBhcyBmOgogICAgICAgICAgICByZXR1cm4ganNvbi5sb2FkKGYpCiAgICBleGNlcHQgKEZpbGVOb3RGb3VuZEVycm9yLCBqc29uLkpTT05EZWNvZGVFcnJvcikgYXMgZToKICAgICAgICByZXR1cm4gewogICAgICAgICAgICAiY2x1c3Rlcl9uYW1lIjogIk9uZUNsb3VkIENsdXN0ZXIiLAogICAgICAgICAgICAidmVyc2lvbiI6ICIxLjAuMCIsCiAgICAgICAgICAgICJub2RlcyI6IFtdCiAgICAgICAgfQoKZGVmIHJ1bl9zc2goaXAsIGNvbW1hbmQsIHRpbWVvdXQ9Myk6CiAgICB0cnk6CiAgICAgICAgcmVzdWx0ID0gc3VicHJvY2Vzcy5ydW4oCiAgICAgICAgICAgIFsic3NoIiwgIi1vIiwgZiJDb25uZWN0VGltZW91dD17dGltZW91dH0iLCAiLW8iLCAiU3RyaWN0SG9zdEtleUNoZWNraW5nPW5vIiwKICAgICAgICAgICAgICJyb290QHtpcH0iLCBjb21tYW5kXSwKICAgICAgICAgICAgY2FwdHVyZV9vdXRwdXQ9VHJ1ZSwgdGV4dD1UcnVlLCB0aW1lb3V0PXRpbWVvdXQgKyAyCiAgICAgICAgKQogICAgICAgIHJldHVybiB7Im9rIjogcmVzdWx0LnJldHVybmNvZGUgPT0gMCwgInN0ZG91dCI6IHJlc3VsdC5zdGRvdXQuc3RyaXAoKSwgInN0ZGVyciI6IHJlc3VsdC5zdGRlcnIuc3RyaXAoKX0KICAgIGV4Y2VwdCBzdWJwcm9jZXNzLlRpbWVvdXRFeHBpcmVkOgogICAgICAgIHJldHVybiB7Im9rIjogRmFsc2UsICJzdGRvdXQiOiAiIiwgInN0ZGVyciI6ICJ0aW1lb3V0In0KICAgIGV4Y2VwdCBFeGNlcHRpb24gYXMgZToKICAgICAgICByZXR1cm4geyJvayI6IEZhbHNlLCAic3Rkb3V0IjogIiIsICJzdGRlcnIiOiBzdHIoZSl9CgpkZWYgZ2V0X3N5c3RlbV9pbmZvKGlwKToKICAgIHJlc3VsdCA9IHJ1bl9zc2goaXAsICIiIgogICAgICAgIGVjaG8gIkxPQUQ9JChjYXQgL3Byb2MvbG9hZGF2ZyB8IGN1dCAtZCcgJyAtZjEpIgogICAgICAgIGVjaG8gIlVQVElNRT0kKHVwdGltZSAtcCkiCiAgICAgICAgZWNobyAiTUVNPSQoZnJlZSAtbSB8IGF3ayAnTlI9PTJ7cHJpbnQgJDMiLyIkMn0nKSIKICAgICAgICBlY2hvICJTV0FQPSQoZnJlZSAtbSB8IGF3ayAnTlI9PTN7cHJpbnQgJDMiLyIkMn0nKSIKICAgICAgICBlY2hvICJESVNLPSQoZGYgLWggL21udC9zZCAyPi9kZXYvbnVsbCB8IGF3ayAnTlI9PTJ7cHJpbnQgJDQiLyIkMn0nIHx8IGRmIC1oIC8gfCBhd2sgJ05SPT0ye3ByaW50ICQ0Ii8iJDJ9JykiCiAgICAiIiIpCiAgICBpbmZvID0ge30KICAgIGlmIHJlc3VsdFsib2siXToKICAgICAgICBmb3IgbGluZSBpbiByZXN1bHRbInN0ZG91dCJdLnNwbGl0KCJcbiIpOgogICAgICAgICAgICBpZiAiPSIgaW4gbGluZToKICAgICAgICAgICAgICAgIGtleSwgdmFsID0gbGluZS5zcGxpdCgiPSIsIDEpCiAgICAgICAgICAgICAgICBpbmZvW2tleS5zdHJpcCgpXSA9IHZhbC5zdHJpcCgpCiAgICByZXR1cm4gaW5mbwoKZGVmIGdldF9kb2NrZXJfY29udGFpbmVycyhpcCk6CiAgICByZXN1bHQgPSBydW5fc3NoKGlwLCAiZG9ja2VyIHBzIC1hIC0tZm9ybWF0ICd7ey5OYW1lc318e3suU3RhdHVzfX18e3suUnVubmluZ0Zvcn19fHt7LlBvcnRzfX0nIDI+L2Rldi9udWxsIikKICAgIGNvbnRhaW5lcnMgPSBbXQogICAgaWYgcmVzdWx0WyJvayJdOgogICAgICAgIGZvciBsaW5lIGluIHJlc3VsdFsic3Rkb3V0Il0uc3BsaXQoIlxuIik6CiAgICAgICAgICAgIGlmIGxpbmUuc3RyaXAoKSBhbmQgInwiIGluIGxpbmU6CiAgICAgICAgICAgICAgICBwYXJ0cyA9IGxpbmUuc3BsaXQoInwiLCAzKQogICAgICAgICAgICAgICAgY29udGFpbmVycy5hcHBlbmQoewogICAgICAgICAgICAgICAgICAgICJuYW1lIjogcGFydHNbMF0sCiAgICAgICAgICAgICAgICAgICAgInN0YXR1cyI6IHBhcnRzWzFdLAogICAgICAgICAgICAgICAgICAgICJydW5uaW5nIjogIlVwIiBpbiBwYXJ0c1sxXSwKICAgICAgICAgICAgICAgICAgICAic2luY2UiOiBwYXJ0c1syXSwKICAgICAgICAgICAgICAgICAgICAicG9ydHMiOiBwYXJ0c1szXSBpZiBsZW4ocGFydHMpID4gMyBlbHNlICIiCiAgICAgICAgICAgICAgICB9KQogICAgcmV0dXJuIGNvbnRhaW5lcnMKCmRlZiBnZXRfc2VydmljZV9zdGF0dXMoaXAsIHNlcnZpY2UpOgogICAgaWYgc2VydmljZS5nZXQoImNvbnRhaW5lciIpOgogICAgICAgIHJlc3VsdCA9IHJ1bl9zc2goaXAsIGYiZG9ja2VyIGluc3BlY3QgLS1mb3JtYXQ9J3t7e3suU3RhdGUuU3RhdHVzfX19fScge3NlcnZpY2VbJ25hbWUnXX0gMj4vZGV2L251bGwiKQogICAgICAgIHJldHVybiB7InJ1bm5pbmciOiByZXN1bHRbIm9rIl0gYW5kIHJlc3VsdFsic3Rkb3V0Il0gPT0gInJ1bm5pbmciLCAidHlwZSI6ICJjb250YWluZXIifQogICAgZWxzZToKICAgICAgICByZXN1bHQgPSBydW5fc3NoKGlwLCBmInN5c3RlbWN0bCBpcy1hY3RpdmUge3NlcnZpY2VbJ25hbWUnXX0gMj4vZGV2L251bGwiKQogICAgICAgIGlmIHJlc3VsdFsib2siXSBhbmQgcmVzdWx0WyJzdGRvdXQiXSA9PSAiYWN0aXZlIjoKICAgICAgICAgICAgcmV0dXJuIHsicnVubmluZyI6IFRydWUsICJ0eXBlIjogInN5c3RlbWQifQogICAgICAgIHJlc3VsdDIgPSBydW5fc3NoKGlwLCBmInBncmVwIC1mICd7c2VydmljZVsnbmFtZSddfScgMj4vZGV2L251bGwiKQogICAgICAgIHJldHVybiB7InJ1bm5pbmciOiByZXN1bHQyWyJvayJdIGFuZCByZXN1bHQyWyJzdGRvdXQiXSAhPSAiIiwgInR5cGUiOiAibmF0aXZlIn0KCmRlZiBjb2xsZWN0X2FsbF9zdGF0dXMoKToKICAgIGNvbmZpZyA9IGxvYWRfY29uZmlnKCkKICAgIHN0YXR1cyA9IHsKICAgICAgICAiY2x1c3Rlcl9uYW1lIjogY29uZmlnWyJjbHVzdGVyX25hbWUiXSwKICAgICAgICAidmVyc2lvbiI6IGNvbmZpZ1sidmVyc2lvbiJdLAogICAgICAgICJ0aW1lc3RhbXAiOiB0aW1lLnN0cmZ0aW1lKCIlWS0lbS0lZCAlSDolTTolUyIpLAogICAgICAgICJub2RlcyI6IFtdCiAgICB9CgogICAgZm9yIG5vZGUgaW4gY29uZmlnWyJub2RlcyJdOgogICAgICAgIG5vZGVfc3RhdHVzID0gewogICAgICAgICAgICAibmFtZSI6IG5vZGVbIm5hbWUiXSwKICAgICAgICAgICAgImRpc3BsYXlfbmFtZSI6IG5vZGVbImRpc3BsYXlfbmFtZSJdLAogICAgICAgICAgICAicm9sZSI6IG5vZGVbInJvbGUiXSwKICAgICAgICAgICAgImlwIjogbm9kZVsiaXAiXSwKICAgICAgICAgICAgIndnX2lwIjogbm9kZVsid2dfaXAiXSwKICAgICAgICAgICAgImNvbG9yIjogbm9kZVsiY29sb3IiXSwKICAgICAgICAgICAgIm9ubGluZSI6IEZhbHNlLAogICAgICAgICAgICAic3lzdGVtIjoge30sCiAgICAgICAgICAgICJjb250YWluZXJzIjogW10sCiAgICAgICAgICAgICJzZXJ2aWNlcyI6IFtdCiAgICAgICAgfQoKICAgICAgICAjIOajgOafpeiKgueCueacqOe6vwogICAgICAgIHNzaF9yZXN1bHQgPSBydW5fc3NoKG5vZGVbImlwIl0sICJlY2hvIG9rIikKICAgICAgICBub2RlX3N0YXR1c1sib25saW5lIl0gPSBzc2hfcmVzdWx0WyJvayJdCgogICAgICAgIGlmIG5vZGVfc3RhdHVzWyJvbmxpbmUiXToKICAgICAgICAgICAgbm9kZV9zdGF0dXNbInN5c3RlbSJdID0gZ2V0X3N5c3RlbV9pbmZvKG5vZGVbImlwIl0pCiAgICAgICAgICAgIG5vZGVfc3RhdHVzWyJjb250YWluZXJzIl0gPSBnZXRfZG9ja2VyX2NvbnRhaW5lcnMobm9kZVsiaXAiXSkKCiAgICAgICAgICAgIGZvciBzdmMgaW4gbm9kZS5nZXQoInNlcnZpY2VzIiwgW10pOgogICAgICAgICAgICAgICAgc3ZjX3N0YXR1cyA9IGdldF9zZXJ2aWNlX3N0YXR1cyhub2RlWyJpcCJdLCBzdmMpCiAgICAgICAgICAgICAgICBub2RlX3N0YXR1c1sic2VydmljZXMiXS5hcHBlbmQoewogICAgICAgICAgICAgICAgICAgICJuYW1lIjogc3ZjWyJuYW1lIl0sCiAgICAgICAgICAgICAgICAgICAgImRpc3BsYXkiOiBzdmMuZ2V0KCJkaXNwbGF5Iiwgc3ZjWyJuYW1lIl0pLAogICAgICAgICAgICAgICAgICAgICJydW5uaW5nIjogc3ZjX3N0YXR1c1sicnVubmluZyJdLAogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogc3ZjX3N0YXR1c1sidHlwZSJdCiAgICAgICAgICAgICAgICB9KQoKICAgICAgICBzdGF0dXNbIm5vZGVzIl0uYXBwZW5kKG5vZGVfc3RhdHVzKQoKICAgIHJldHVybiBzdGF0dXMKCmRlZiBfY2hlY2tfYXV0aCgpOgogICAgIiIi566A5Y2VIEJhc2ljIEF1dGgg5qCh6aqMIiIiCiAgICBhdXRoID0gcmVxdWVzdC5hdXRob3JpemF0aW9uCiAgICBpZiBub3QgYXV0aCBvciBhdXRoLnVzZXJuYW1lICE9IFBBTkVMX1VTRVIgb3IgYXV0aC5wYXNzd29yZCAhPSBQQU5FTF9QQVNUOgogICAgICAgIHJldHVybiBGYWxzZQogICAgcmV0dXJuIFRydWUKCmRlZiByZXF1aXJlX2F1dGgoZik6CiAgICAiIiDoo4XppbDlmag6IOimgeaxgiBBUEkg6K+35rGC5b+F6aG76YCa6L+HIEJhc2ljIEF1dGgg6K6k6K+BIiIiCiAgICBmcm9tIGZ1bmN0b29scyBpbXBvcnQgd3JhcHMKICAgIEB3cmFwcyhmKQogICAgZGVmIGRlY29yYXRlZCgqYXJncywgKiprd2FyZ3MpOgogICAgICAgIGlmIG5vdCBfY2hlY2tfYXV0aCgpOgogICAgICAgICAgICByZXR1cm4ganNvbmlmeSh7Im9rIjogRmFsc2UsICJlcnJvciI6ICLmnInmnYPmi6XmnYPmnI3vvJog6ZyA6KaBIEJhc2ljIEF1dGgg6K6k6K+BIn0pLCA0MDEKICAgICAgICByZXR1cm4gZigqYXJncywgKiprd2FyZ3MpCiAgICByZXR1cm4gZGVjb3JhdGVkCgojIC0tLS0g6Lev55SxIC0tLS0KCkBhcHAucm91dGUoIi8iKQpkZWYgaW5kZXgoKToKICAgIHJldHVybiByZW5kZXJfdGVtcGxhdGUoImluZGV4Lmh0bWwiKQoKQGFwcC5yb3V0ZSgiL2FwaS9zdGF0dXMiKQpAcmVxdWlyZV9hdXRoCmRlZiBhcGlfc3RhdHVzKCk6CiAgICByZXR1cm4ganNvbmlmeShjb2xsZWN0X2FsbF9zdGF0dXMoKSkKCkBhcHAucm91dGUoIi9hcGkvbm9kZS88bm9kZV9uYW1lPi9hY3Rpb24iLCBtZXRob2RzPVsiUE9TVCJdKQpAcmVxdWlyZV9hdXRoCmRlZiBub2RlX2FjdGlvbihub2RlX25hbWUpOgogICAgZGF0YSA9IHJlcXVlc3QuanNvbiBvciB7fQogICAgYWN0aW9uID0gZGF0YS5nZXQoImFjdGlvbiIsICIiKQogICAgY29uZmlnID0gbG9hZF9jb25maWcoKQogICAgbm9kZSA9IG5leHQoKG4gZm9yIG4gaW4gY29uZmlnWyJub2RlcyJdIGlmIG5bIm5hbWUiXSA9PSBub2RlX25hbWUpLCBOb25lKQogICAgaWYgbm90IG5vZGU6CiAgICAgICAgcmV0dXJuIGpzb25pZnkoeyJvayI6IEZhbHNlLCAiZXJyb3IiOiAi6IqC54K55pyq5om+5YiwIn0pLCA0MDQKCiAgICAjIOWNsemZqeaTjeS9nOS6jOasoeWhruiupAogICAgZGFuZ2Vyb3VzX2FjdGlvbnMgPSBbInJlYm9vdCIsICJzaHV0ZG93biJdCiAgICBpZiBhY3Rpb24gaW4gZGFuZ2Vyb3VzX2FjdGlvbnM6CiAgICAgICAgY29uZmlybSA9IGRhdGEuZ2V0KCJjb25maXJtIiwgRmFsc2UpCiAgICAgICAgaWYgbm90IGNvbmZpcm06CiAgICAgICAgICAgIHJldHVybiBqc29uaWZ5KHsKICAgICAgICAgICAgICAgICJvayI6IEZhbHNlLAogICAgICAgICAgICAgICAgImNvbmZpcm1fcmVxdWlyZWQiOiBUcnVlLAogICAgICAgICAgICAgICAgImVycm9yIjogZiLljbHpmanmk43kvZwgJ3thY3Rpb259JyDpnIDopoHkuozmrKHnoa7orqQsIOivt+iuvue9riBjb25maXJtPXRydWUiCiAgICAgICAgICAgIH0pLCA0MDAKCiAgICBhY3Rpb25zID0gewogICAgICAgICJyZWJvb3QiOiBmInJlYm9vdCIsCiAgICAgICAgInNodXRkb3duIjogZiJzaHV0ZG93biAtaCBub3ciLAogICAgICAgICJkb2NrZXJfcmVzdGFydCI6IGYiY2QgL21udC9zZC9zcnYve25vZGVfbmFtZX0gJiYgZG9ja2VyLWNvbXBvc2UgcmVzdGFydCB8fCBkb2NrZXIgY29tcG9zZSByZXN0YXJ0IiwKICAgICAgICAiZG9ja2VyX3VwIjogZiJjZCAvbW50L3NkL3Nydi97bm9kZV9uYW1lfSAmJiBkb2NrZXItY29tcG9zZSB1cCAtZCB8fCBkb2NrZXIgY29tcG9zZSB1cCAtZCIsCiAgICAgICAgImRvY2tlcl9kb3duIjogZiJjZCAvbW50L3NkL3Nydi97bm9kZV9uYW1lfSAmJiBkb2NrZXItY29tcG9zZSBkb3duIHx8IGRvY2tlciBjb21wb3NlIGRvd24iLAogICAgICAgICJkb2NrZXJfcHVsbCI6IGYiY2QgL21udC9zZC9zcnYve25vZGVfbmFtZX0gJiYgZG9ja2VyLWNvbXBvc2UgcHVsbCB8fCBkb2NrZXIgY29tcG9zZSBwdWxsIiwKICAgIH0KCiAgICBpZiBhY3Rpb24gaW4gYWN0aW9uczoKICAgICAgICByZXN1bHQgPSBydW5fc3NoKG5vZGVbImlwIl0sIGFjdGlvbnNbYWN0aW9uXSwgdGltZW91dD0xMCkKICAgICAgICByZXR1cm4ganNvbmlmeSh7Im9rIjogcmVzdWx0WyJvayJdLCAib3V0cHV0IjogcmVzdWx0WyJzdGRvdXQiXSwgImVycm9yIjogcmVzdWx0WyJzdGRlcnIiXX0pCgogICAgcmV0dXJuIGpzb25pZnkoeyJvayI6IEZhbHNlLCAiZXJyb3IiOiBmIuacquefpeaTjeS9nDoge2FjdGlvbn0ifSksIDQwMAoKQGFwcC5yb3V0ZSgiL2FwaS9zZXJ2aWNlLzxub2RlX25hbWU+LzxzdmNfbmFtZT4vPGFjdGlvbj4iLCBtZXRob2RzPVsiUE9TVCJdKQpAcmVxdWlyZV9hdXRoCmRlZiBzZXJ2aWNlX2FjdGlvbihub2RlX25hbWUsIHN2Y19uYW1lLCBhY3Rpb24pOgogICAgY29uZmlnID0gbG9hZF9jb25maWcoKQogICAgbm9kZSA9IG5leHQoKG4gZm9yIG4gaW4gY29uZmlnWyJub2RlcyJdIGlmIG5bIm5hbWUiXSA9PSBub2RlX25hbWUpLCBOb25lKQogICAgaWYgbm90IG5vZGU6CiAgICAgICAgcmV0dXJuIGpzb25pZnkoeyJvayI6IEZhbHNlLCAiZXJyb3IiOiAi6IqC54K55pyq5om+5YiwIn0pLCA0MDQKCiAgICBpc19jb250YWluZXIgPSBhbnkoc1sibmFtZSJdID09IHN2Y19uYW1lIGFuZCBzLmdldCgiY29udGFpbmVyIiwgVHJ1ZSkgZm9yIHMgaW4gbm9kZS5nZXQoInNlcnZpY2VzIiwgW10pKQoKICAgIGNvbW1hbmRzID0gewogICAgICAgICJzdGFydCI6IGYiZG9ja2VyIHN0YXJ0IHtzdmNfbmFtZX0iIGlmIGlzX2NvbnRhaW5lciBlbHNlIGYic3lzdGVtY3RsIHN0YXJ0IHtzdmNfbmFtZX0iLAogICAgICAgICJzdG9wIjogZiJkb2NrZXIgc3RvcCB7c3ZjX25hbWV9IiBpZiBpc19jb250YWluZXIgZWxzZSBmInN5c3RlbWN0bCBzdG9wIHtzdmNfbmFtZX0iLAogICAgICAgICJyZXN0YXJ0IjogZiJkb2NrZXIgcmVzdGFydCB7c3ZjX25hbWV9IiBpZiBpc19jb250YWluZXIgZWxzZSBmInN5c3RlbWN0bCByZXN0YXJ0IHtzdmNfbmFtZX0iLAogICAgICAgICJsb2dzIjogZiJkb2NrZXIgbG9ncyAtLXRhaWwgNTAge3N2Y19uYW1lfSIgaWYgaXNfY29udGFpbmVyIGVsc2UgZiJqb3VybmFsY3RsIC11IHtzdmNfbmFtZX0gLS1uby1wYWdlciAtbiA1MCIsCiAgICB9CgogICAgaWYgYWN0aW9uIGluIGNvbW1hbmRzOgogICAgICAgIHJlc3VsdCA9IHJ1bl9zc2gobm9kZVsiaXAiXSwgY29tbWFuZHNbYWN0aW9uXSwgdGltZW91dD0xMCkKICAgICAgICByZXR1cm4ganNvbmlmeSh7Im9rIjogcmVzdWx0WyJvayJdLCAib3V0cHV0IjogcmVzdWx0WyJzdGRvdXQiXS5zcGxpdCgiXG4iKVstMjA6XSwgImVycm9yIjogcmVzdWx0WyJzdGRlcnIiXS5zcGxpdCgiXG4iKVstMTA6XX0pCgogICAgcmV0dXJuIGpzb25pZnkoeyJvayI6IEZhbHNlLCAiZXJyb3IiOiBmIuacquefpeaTjeS9nDoge2FjdGlvbn0ifSksIDQwMAoKQGFwcC5yb3V0ZSgiL2FwaS9leGVjIiwgbWV0aG9kcz1bIlBPU1QiXSkKQHJlcXVpcmVfYXV0aApkZWYgZXhlY19jb21tYW5kKCk6CiAgICBkYXRhID0gcmVxdWVzdC5qc29uIG9yIHt9CiAgICBub2RlX25hbWUgPSBkYXRhLmdldCgibm9kZSIpCiAgICBjb21tYW5kID0gZGF0YS5nZXQoImNvbW1hbmQiLCAiIikKCiAgICBjb25maWcgPSBsb2FkX2NvbmZpZygpCiAgICBub2RlID0gbmV4dCgobiBmb3IgbiBpbiBjb25maWdbIm5vZGVzIl0gaWYgblsibmFtZSJdID09IG5vZGVfbmFtZSksIE5vbmUpCiAgICBpZiBub3Qgbm9kZToKICAgICAgICByZXR1cm4ganNvbmlmeSh7Im9rIjogRmFsc2UsICJlcnJvciI6ICLoioLngrnmnKrmib7liLAifSksIDQwNAoKICAgICMg5a6J5YWo6ZmQ5Yi2OiDnmb3lkI3ljZXmnLrliLbvvIjlj6rlhYHorrjpooTlrprkuYnnmoTlronlhajlkZ3ku6TvvIkKICAgIGlmIG5vdCBpc19jb21tYW5kX3NhZmUoY29tbWFuZCk6CiAgICAgICAgcmV0dXJuIGpzb25pZnkoeyJvayI6IEZhbHNlLCAiZXJyb3IiOiAi5ZG95Luk5LiN5Zyo55m95ZCN5Y2V5LitLCDlt7Lmi5Lnu50gKOS7heWFgeiuuDoganJlZS9kZi9scy9kb2NrZXIgcHMvdXB0aW1lIOeti+WPquivu+WRveS7pCkifSksIDQwMwoKICAgIHJlc3VsdCA9IHJ1bl9zc2gobm9kZVsiaXAiXSwgY29tbWFuZCwgdGltZW91dD0zMCkKICAgIHJldHVybiBqc29uaWZ5KHsib2siOiByZXN1bHRbIm9rIl0sICJvdXRwdXQiOiByZXN1bHRbInN0ZG91dCJdLCAiZXJyb3IiOiByZXN1bHRbInN0ZGVyciJdfSkKCkBhcHAucm91dGUoIi9hcGkvdG9wb2xvZ3kiKQpAcmVxdWlyZV9hdXRoCmRlZiB0b3BvbG9neSgpOgogICAgY29uZmlnID0gbG9hZF9jb25maWcoKQogICAgcmV0dXJuIGpzb25pZnkoY29uZmlnKQoKaWYgX19uYW1lX18gPT0gIl9fbWFpbl9fIjoKICAgIHBvcnQgPSBpbnQob3MuZW52aXJvbi5nZXQoIlBBTkVMX1BPUlQiLCA5MDAwKSkKICAgIGhvc3QgPSBvcy5lbnZpcm9uLmdldCgiUEFORUxfSE9TVCIsICIwLjAuMC4wIikKICAgIHByaW50KGYiT25lQ2xvdWQgQ2x1c3RlciBQYW5lbCDlkK/liqjkuK0uLi4iKQogICAgcHJpbnQoZiIgIGh0dHA6Ly97aG9zdH06e3BvcnR9IikKICAgIGFwcC5ydW4oaG9zdD1ob3N0LCBwb3J0PXBvcnQsIGRlYnVnPUZhbHNlKQ==
+#!/usr/bin/env python3
+# ============================================================
+#  OneCloud Cluster Control Panel
+#  Flask Web 应用 - 集群状态监控和快捷操作
+# ============================================================
+
+import os
+import json
+import subprocess
+import threading
+import time
+from flask import Flask, jsonify, render_template, request
+from flask_cors import CORS
+
+app = Flask(__name__)
+CORS(app, origins=[f"http://localhost:{os.environ.get('PANEL_PORT', '9000')}", "http://127.0.0.1:*"])
+
+CONFIG_PATH = os.environ.get("PANEL_CONFIG", os.path.join(os.path.dirname(__file__), "config.json"))
+
+# ---- 认证配置 ----
+# 通过环境变量 PANEL_USER/PANEL_PASS 设置账号密码
+PANEL_USER = os.environ.get("PANEL_USER", "admin")
+PANEL_PASS = os.environ.get("PANEL_PASS", "changeme")
+
+# 白名单命令前缀（只允许执行这些开头的命令）
+ALLOWED_CMD_PREFIXES = (
+    "free", "df", "ls ", "cat /proc", "uptime", "hostname",
+    "docker ps", "docker stats", "docker inspect", "docker logs",
+    "systemctl status", "systemctl is-active",
+    "ip a", "ip addr", "ss -", "netstat",
+    "cat /etc/os-release", "uname", "whoami", "date",
+)
+
+def is_command_safe(command: str) -> bool:
+    """白名单校验：只允许预定义的安全命令"""
+    cmd = command.strip().lower()
+    # 先做基础黑名单拦截（双保险）
+    blocked = ("rm -rf", "mkfs", "dd if=", "shutdown", "reboot", "poweroff",
+              ":(){", "fork bomb", "wget http", "curl http", ">/dev/sd")
+    if any(b in cmd for b in blocked):
+        return False
+    # 白名单匹配
+    return any(cmd.startswith(p) for p in ALLOWED_CMD_PREFIXES)
+
+def load_config():
+    try:
+        with open(CONFIG_PATH) as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        return {
+            "cluster_name": "OneCloud Cluster",
+            "version": "1.0.0",
+            "nodes": []
+        }
+
+def run_ssh(ip, command, timeout=3):
+    try:
+        result = subprocess.run(
+            ["ssh", "-o", f"ConnectTimeout={timeout}", "-o", "StrictHostKeyChecking=no",
+             f"root@{ip}", command],
+            capture_output=True, text=True, timeout=timeout + 2
+        )
+        return {"ok": result.returncode == 0, "stdout": result.stdout.strip(), "stderr": result.stderr.strip()}
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "stdout": "", "stderr": "timeout"}
+    except Exception as e:
+        return {"ok": False, "stdout": "", "stderr": str(e)}
+
+def get_system_info(ip):
+    result = run_ssh(ip, """
+        echo "LOAD=$(cat /proc/loadavg | cut -d' ' -f1)"
+        echo "UPTIME=$(uptime -p)"
+        echo "MEM=$(free -m | awk 'NR==2{print $3"/"$2}')"
+        echo "SWAP=$(free -m | awk 'NR==3{print $3"/"$2}')"
+        echo "DISK=$(df -h /mnt/sd 2>/dev/null | awk 'NR==2{print $4"/"$2}' || df -h / | awk 'NR==2{print $4"/"$2}')"
+    """)
+    info = {}
+    if result["ok"]:
+        for line in result["stdout"].split("\n"):
+            if "=" in line:
+                key, val = line.split("=", 1)
+                info[key.strip()] = val.strip()
+    return info
+
+def get_docker_containers(ip):
+    result = run_ssh(ip, "docker ps -a --format '{{.Names}}|{{.Status}}|{{.RunningFor}}|{{.Ports}}' 2>/dev/null")
+    containers = []
+    if result["ok"]:
+        for line in result["stdout"].split("\n"):
+            if line.strip() and "|" in line:
+                parts = line.split("|", 3)
+                containers.append({
+                    "name": parts[0],
+                    "status": parts[1],
+                    "running": "Up" in parts[1],
+                    "since": parts[2],
+                    "ports": parts[3] if len(parts) > 3 else ""
+                })
+    return containers
+
+def get_service_status(ip, service):
+    if service.get("container"):
+        result = run_ssh(ip, f"docker inspect --format='{{{{.State.Status}}}}' {service['name']} 2>/dev/null")
+        return {"running": result["ok"] and result["stdout"] == "running", "type": "container"}
+    else:
+        result = run_ssh(ip, f"systemctl is-active {service['name']} 2>/dev/null")
+        if result["ok"] and result["stdout"] == "active":
+            return {"running": True, "type": "systemd"}
+        result2 = run_ssh(ip, f"pgrep -f '{service['name']}' 2>/dev/null")
+        return {"running": result2["ok"] and result2["stdout"] != "", "type": "native"}
+
+def collect_all_status():
+    config = load_config()
+    status = {
+        "cluster_name": config["cluster_name"],
+        "version": config["version"],
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "nodes": []
+    }
+
+    for node in config["nodes"]:
+        node_status = {
+            "name": node["name"],
+            "display_name": node["display_name"],
+            "role": node["role"],
+            "ip": node["ip"],
+            "wg_ip": node["wg_ip"],
+            "color": node["color"],
+            "online": False,
+            "system": {},
+            "containers": [],
+            "services": []
+        }
+
+        # 检查节点在线
+        ssh_result = run_ssh(node["ip"], "echo ok")
+        node_status["online"] = ssh_result["ok"]
+
+        if node_status["online"]:
+            node_status["system"] = get_system_info(node["ip"])
+            node_status["containers"] = get_docker_containers(node["ip"])
+
+            for svc in node.get("services", []):
+                svc_status = get_service_status(node["ip"], svc)
+                node_status["services"].append({
+                    "name": svc["name"],
+                    "display": svc.get("display", svc["name"]),
+                    "running": svc_status["running"],
+                    "type": svc_status["type"]
+                })
+
+        status["nodes"].append(node_status)
+
+    return status
+
+def _check_auth():
+    """简单 Basic Auth 校验"""
+    auth = request.authorization
+    if not auth or auth.username != PANEL_USER or auth.password != PANEL_PASS:
+        return False
+    return True
+
+def require_auth(f):
+    """装饰器: 要求 API 请求必须通过 Basic Auth 认证"""
+    from functools import wraps
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not _check_auth():
+            return jsonify({"ok": False, "error": "未授权: 需要 Basic Auth 认证"}), 401
+        return f(*args, **kwargs)
+    return decorated
+
+# ---- 路由 ----
+
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+@app.route("/api/status")
+@require_auth
+def api_status():
+    return jsonify(collect_all_status())
+
+@app.route("/api/node/<node_name>/action", methods=["POST"])
+@require_auth
+def node_action(node_name):
+    data = request.json or {}
+    action = data.get("action", "")
+    config = load_config()
+    node = next((n for n in config["nodes"] if n["name"] == node_name), None)
+    if not node:
+        return jsonify({"ok": False, "error": "节点未找到"}), 404
+
+    # 危险操作二次确认
+    dangerous_actions = ["reboot", "shutdown"]
+    if action in dangerous_actions:
+        confirm = data.get("confirm", False)
+        if not confirm:
+            return jsonify({
+                "ok": False,
+                "confirm_required": True,
+                "error": f"危险操作 '{action}' 需要二次确认, 请设置 confirm=true"
+            }), 400
+
+    actions = {
+        "reboot": f"reboot",
+        "shutdown": f"shutdown -h now",
+        "docker_restart": f"cd /mnt/sd/srv/{node_name} && docker-compose restart || docker compose restart",
+        "docker_up": f"cd /mnt/sd/srv/{node_name} && docker-compose up -d || docker compose up -d",
+        "docker_down": f"cd /mnt/sd/srv/{node_name} && docker-compose down || docker compose down",
+        "docker_pull": f"cd /mnt/sd/srv/{node_name} && docker-compose pull || docker compose pull",
+    }
+
+    if action in actions:
+        result = run_ssh(node["ip"], actions[action], timeout=10)
+        return jsonify({"ok": result["ok"], "output": result["stdout"], "error": result["stderr"]})
+
+    return jsonify({"ok": False, "error": f"未知操作: {action}"}), 400
+
+@app.route("/api/service/<node_name>/<svc_name>/<action>", methods=["POST"])
+@require_auth
+def service_action(node_name, svc_name, action):
+    config = load_config()
+    node = next((n for n in config["nodes"] if n["name"] == node_name), None)
+    if not node:
+        return jsonify({"ok": False, "error": "节点未找到"}), 404
+
+    is_container = any(s["name"] == svc_name and s.get("container", True) for s in node.get("services", []))
+
+    commands = {
+        "start": f"docker start {svc_name}" if is_container else f"systemctl start {svc_name}",
+        "stop": f"docker stop {svc_name}" if is_container else f"systemctl stop {svc_name}",
+        "restart": f"docker restart {svc_name}" if is_container else f"systemctl restart {svc_name}",
+        "logs": f"docker logs --tail 50 {svc_name}" if is_container else f"journalctl -u {svc_name} --no-pager -n 50",
+    }
+
+    if action in commands:
+        result = run_ssh(node["ip"], commands[action], timeout=10)
+        return jsonify({"ok": result["ok"], "output": result["stdout"].split("\n")[-20:], "error": result["stderr"].split("\n")[-10:]})
+
+    return jsonify({"ok": False, "error": f"未知操作: {action}"}), 400
+
+@app.route("/api/exec", methods=["POST"])
+@require_auth
+def exec_command():
+    data = request.json or {}
+    node_name = data.get("node")
+    command = data.get("command", "")
+
+    config = load_config()
+    node = next((n for n in config["nodes"] if n["name"] == node_name), None)
+    if not node:
+        return jsonify({"ok": False, "error": "节点未找到"}), 404
+
+    # 安全限制: 白名单机制（只允许预定义的安全命令）
+    if not is_command_safe(command):
+        return jsonify({"ok": False, "error": "命令不在白名单中, 已拒绝 (仅允许: free/df/ls/docker ps/uptime 等只读命令)"}), 403
+
+    result = run_ssh(node["ip"], command, timeout=30)
+    return jsonify({"ok": result["ok"], "output": result["stdout"], "error": result["stderr"]})
+
+@app.route("/api/topology")
+@require_auth
+def topology():
+    config = load_config()
+    return jsonify(config)
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PANEL_PORT", 9000))
+    host = os.environ.get("PANEL_HOST", "0.0.0.0")
+    print(f"OneCloud Cluster Panel 启动中...")
+    print(f"  http://{host}:{port}")
+    app.run(host=host, port=port, debug=False)
