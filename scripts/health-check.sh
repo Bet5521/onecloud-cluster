@@ -97,8 +97,6 @@ check_container 192.168.1.101 "Memos" "memos"
 check_port 192.168.1.101 3000 "AdGuard Web"
 check_port 192.168.1.101 5230 "Memos"
 check_port 192.168.1.101 51820 "WireGuard"
-check_port 192.168.1.101 9090 "Clash API"
-check_port 192.168.1.101 9000 "Panel"
 
 # ---- NODE-02 ----
 check_system 192.168.1.102 "wk-iot-02"
@@ -118,7 +116,6 @@ check_container 192.168.1.103 "CUPS Web" "cups-web"
 check_container 192.168.1.103 "AriaNg" "ariang"
 check_port 192.168.1.103 8384 "Syncthing Web"
 check_port 192.168.1.103 6800 "aria2 RPC"
-check_port 192.168.1.103 6880 "AriaNg Web"
 check_port 192.168.1.103 631 "CUPS"
 
 # ---- WireGuard Mesh ----

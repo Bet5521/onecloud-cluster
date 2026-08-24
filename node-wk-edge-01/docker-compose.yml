@@ -1,10 +1,12 @@
+version: "3.8"
+
 services:
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: cloudflared
     restart: unless-stopped
     env_file: .env
-    command: tunnel --no-autoupdate run
+    command: tunnel run
     environment:
       - TUNNEL_TOKEN=${CF_TUNNEL_TOKEN}
       - TZ=${TZ}
@@ -41,6 +43,8 @@ services:
     container_name: wireguard
     restart: unless-stopped
     env_file: .env
+    ports:
+      - "51820:51820/udp"
     environment:
       - TZ=${TZ}
       - PUID=${PUID}
@@ -76,7 +80,7 @@ services:
       - MEMOS_PORT=${MEMOS_PORT}
       - MEMOS_DRIVER=sqlite
     ports:
-      - "${MEMOS_PORT}:${MEMOS_PORT}"
+      - "5230:5230"
     volumes:
       - ./memos/data:/var/opt/memos
     logging:

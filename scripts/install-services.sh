@@ -48,7 +48,7 @@ install_mihomo() {
         curl -sL "https://github.com/MetaCubeX/mihomo/releases/download/${VER}/mihomo-linux-armv7-${VER}.gz" \
             | gunzip > /usr/local/bin/mihomo
         chmod +x /usr/local/bin/mihomo
-        log_info "mihomo 版本: $(mihomo -v 2>&1 | head -1 || echo 'unknown')"
+        log_info "mihomo 版本: $($(which mihomo) -v 2>&1 | head -1 || echo 'ok')"
     else
         log_error "下载失败, 请手动安装"
     fi
@@ -109,19 +109,22 @@ install_verysync() {
 
 start_edge() {
     log_info "启动 NODE-01 Docker 服务..."
-    (cd /mnt/sd/srv/wk-edge-01 && docker-compose up -d)
+    cd /mnt/sd/srv/wk-edge-01
+    docker compose up -d
     docker ps --format "table {{.Names}}\t{{.Status}}"
 }
 
 start_iot() {
     log_info "启动 NODE-02 Docker 服务..."
-    (cd /mnt/sd/srv/wk-iot-02 && docker-compose up -d)
+    cd /mnt/sd/srv/wk-iot-02
+    docker compose up -d
     docker ps --format "table {{.Names}}\t{{.Status}}"
 }
 
 start_storage() {
     log_info "启动 NODE-03 Docker 服务..."
-    (cd /mnt/sd/srv/wk-storage-03 && docker-compose up -d)
+    cd /mnt/sd/srv/wk-storage-03
+    docker compose up -d
     docker ps --format "table {{.Names}}\t{{.Status}}"
 }
 
